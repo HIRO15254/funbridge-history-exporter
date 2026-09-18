@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ja">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>Funbridge History Exporter</title>
+		<link rel="stylesheet" href="popup.css">
+	</head>
+	<body>
+		<main>
+			<h1>Funbridge履歴をPBNで取得</h1>
+			<p class="lead">
+				Funbridgeの認証済みタブに接続し、BP
+				Circuit・Series・Dailyの履歴をPBN 2.1ファイルへ保存します。
+			</p>
+
+			<section class="status-card" aria-live="polite">
+				<div class="status-line">
+					<span id="status-dot" class="dot idle"></span>
+					<strong id="status-title">未接続</strong>
+				</div>
+				<p id="status-detail">
+					Funbridgeを開いて「通信を検出」を押してください。
+				</p>
+				<progress id="progress" value="0" max="1" hidden></progress>
+			</section>
+
+			<ol class="steps">
+				<li>Funbridge Webへログインしたタブで「通信を検出」を押す</li>
+				<li>
+					Funbridge画面で履歴を開くか、ボードを1つ選んでAPI通信を発生させる
+				</li>
+				<li>「全履歴を保存」が有効になったら実行する</li>
+			</ol>
+
+			<label for="account-id">Funbridge ID（自動検出できない場合のみ）</label>
+			<input
+				id="account-id"
+				inputmode="numeric"
+				autocomplete="off"
+				placeholder="例: 1234567"
+			>
+
+			<div class="actions">
+				<button id="connect" type="button">通信を検出</button>
+				<button id="export" type="button" class="primary" disabled>
+					全履歴を保存
+				</button>
+				<button id="disconnect" type="button" class="secondary" disabled>
+					接続を解除
+				</button>
+			</div>
+
+			<p class="privacy">
+				認証ヘッダーはメモリ内だけで使用し、保存するPBNやChromeストレージには書き込みません。データはFunbridgeとローカルのダウンロード先以外へ送信しません。
+			</p>
+		</main>
+		<script type="module" src="popup.js"></script>
+	</body>
+</html>

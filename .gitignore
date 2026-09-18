@@ -1,0 +1,4 @@
+node_modules/
+funbridge-export/
+*.zip
+.DS_Store

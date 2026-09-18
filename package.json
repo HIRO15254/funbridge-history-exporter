@@ -1,0 +1,19 @@
+{
+	"name": "funbridge-history-exporter",
+	"version": "2.0.0",
+	"private": true,
+	"type": "module",
+	"description": "認証済みFunbridge WebタブからBP Circuit・Series・Dailyの履歴を取得し、PBN 2.1として保存するChrome拡張機能",
+	"license": "MIT",
+	"engines": {
+		"node": ">=22"
+	},
+	"scripts": {
+		"test": "node --test \"test/*.test.js\"",
+		"check": "biome check",
+		"check:fix": "biome check --write"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.2.0"
+	}
+}

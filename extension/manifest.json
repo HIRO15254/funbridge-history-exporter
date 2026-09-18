@@ -1,0 +1,19 @@
+{
+	"manifest_version": 3,
+	"name": "Funbridge History Exporter",
+	"version": "2.0.0",
+	"description": "認証済みFunbridgeタブから大会履歴を取得し、PBN 2.1形式でローカル保存します。",
+	"permissions": ["activeTab", "debugger", "downloads"],
+	"host_permissions": [
+		"https://*.funbridge.com/*",
+		"https://*.funbridge.net/*"
+	],
+	"background": {
+		"service_worker": "background.js",
+		"type": "module"
+	},
+	"action": {
+		"default_title": "Funbridge履歴をPBNで取得",
+		"default_popup": "popup.html"
+	}
+}
