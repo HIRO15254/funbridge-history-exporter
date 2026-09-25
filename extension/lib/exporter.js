@@ -26,7 +26,7 @@ function sourceTournamentId(row) {
 		row?.id ??
 		row?.ID;
 	if (value === undefined || value === null || value === "") {
-		throw new Error("履歴行に大会IDがありません。");
+		throw new Error("History row has no tournament ID.");
 	}
 	return String(value);
 }
@@ -60,7 +60,7 @@ async function collectPages(post, endpoint, initialBody) {
 	}
 	if (expected > 0 && uniqueRows(rows).length !== expected) {
 		throw new Error(
-			`${endpoint}: ${uniqueRows(rows).length}/${expected}件しか取得できませんでした。`
+			`${endpoint}: fetched only ${uniqueRows(rows).length}/${expected} rows.`
 		);
 	}
 	return uniqueRows(rows);
@@ -98,7 +98,7 @@ async function collectGroups(post, sourceDealId, categoryID) {
 	}
 	if (sourceTotalSize > 0 && rows.length !== sourceTotalSize) {
 		throw new Error(
-			`deal ${sourceDealId}: 契約集計が${rows.length}/${sourceTotalSize}行です。`
+			`deal ${sourceDealId}: got ${rows.length}/${sourceTotalSize} contract distribution rows.`
 		);
 	}
 	return {
@@ -147,7 +147,7 @@ async function standardCapture(post, archive, categoryID, options = {}) {
 	};
 	for (const [index, dealId] of playedIds.entries()) {
 		options.progress?.(
-			`「${archive.title ?? archive.name}」ボード ${index + 1}/${playedIds.length}`
+			`"${archive.title ?? archive.name}" board ${index + 1}/${playedIds.length}`
 		);
 		const summary = await collectSummary(post, dealId, categoryID);
 		capture.accountId ??= findPlayerId(
@@ -168,7 +168,7 @@ async function knockoutCapture(post, archive, options = {}) {
 		})
 	);
 	if (matches.length === 0) {
-		throw new Error("KO対戦結果がありません。");
+		throw new Error("No KO match results.");
 	}
 	const capture = {
 		archive,
@@ -195,7 +195,7 @@ async function knockoutCapture(post, archive, options = {}) {
 			}
 			exportBoardNumber++;
 			options.progress?.(
-				`「${archive.title ?? archive.name}」ラウンド${detail.match.roundNumber} ボード ${index + 1}/${detail.dealList.length}`
+				`"${archive.title ?? archive.name}" round ${detail.match.roundNumber}, board ${index + 1}/${detail.dealList.length}`
 			);
 			const summary = await collectSummary(
 				post,
@@ -237,7 +237,7 @@ async function collectBpTournament(post, row, options) {
 			tournamentId: sourceTournamentId(row)
 		});
 		if (children.length === 0) {
-			throw new Error(`結果が利用できません: ${federalError.message}`);
+			throw new Error(`Results unavailable: ${federalError.message}`);
 		}
 		const captures = [];
 		for (const child of children) {
@@ -306,7 +306,7 @@ async function captureTournaments(post, archives, { accountId, onProgress }) {
 		onProgress?.({ current: completed, total, detail });
 	for (const [family, rows] of Object.entries(archives)) {
 		for (const row of rows) {
-			progress(`「${row.title ?? row.name}」を取得しています。`);
+			progress(`Fetching "${row.title ?? row.name}".`);
 			try {
 				captures.push(
 					...(await captureOne(post, family, row, {
@@ -324,7 +324,7 @@ async function captureTournaments(post, archives, { accountId, onProgress }) {
 				});
 			}
 			completed++;
-			progress(`${completed}/${total}大会を処理しました。`);
+			progress(`Processed ${completed}/${total} tournaments.`);
 		}
 	}
 	return { captures, indexCount: total, skipped };
@@ -348,7 +348,7 @@ export async function exportAllHistory({
 	const detectedAccountId = accountIdFor(captures, accountId);
 	if (!detectedAccountId) {
 		throw new Error(
-			"Funbridge IDを自動検出できませんでした。入力欄へ本人の数字IDを入力して再実行してください。"
+			"Could not detect your Funbridge ID. Enter your numeric ID in the input field and try again."
 		);
 	}
 	for (const capture of captures) {

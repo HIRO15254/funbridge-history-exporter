@@ -1,33 +1,35 @@
 # Funbridge History Exporter
 
-Funbridge Web版の認証済みタブから、BP Circuit・Series・Dailyの対戦履歴を取得し、**PBN 2.1**ファイルとしてローカルに保存するChrome拡張機能（Manifest V3）です。
+English | [日本語](README.ja.md)
 
-- 配札、宣言、実カードプレイ、契約、獲得トリック、本人のボード成績、全契約の分布をPBNへ残します。
-- サーバーを持ちません。データはFunbridgeとブラウザーのダウンロード先以外へ送信されません。
-- 認証ヘッダーはservice workerのメモリー内だけで使い、`chrome.storage`・出力ファイル・consoleへ書き込みません。
+A Chrome extension (Manifest V3) that fetches your BP Circuit, Series, and Daily history from an authenticated Funbridge Web tab and saves it locally as **PBN 2.1** files.
 
-出力タグの詳細は [docs/pbn-format.md](docs/pbn-format.md) を参照してください。
+- Records the deal, auction, actual card play, contract, tricks taken, your board result, and the distribution of all contracts.
+- Has no server. Data is sent nowhere except Funbridge and your browser's download folder.
+- The authorization header is kept only in the service worker's memory and is never written to `chrome.storage`, output files, or the console.
 
-## インストール
+See [docs/pbn-format.md](docs/pbn-format.md) for the output tags.
 
-1. このリポジトリをクローンする。
-2. Chromeで `chrome://extensions` を開く。
-3. 「デベロッパー モード」を有効にする。
-4. 「パッケージ化されていない拡張機能を読み込む」で `extension/` ディレクトリを選ぶ。
+## Installation
 
-## 使い方
+1. Clone this repository.
+2. Open `chrome://extensions` in Chrome.
+3. Turn on "Developer mode".
+4. Click "Load unpacked" and select the `extension/` directory.
 
-1. Funbridge Web版へログインし、そのタブを表示したまま拡張機能を開く。
-2. 「通信を検出」を押す。Chromeがデバッガー接続中であることを表示するのは正常です。
-3. 同じタブで履歴か大会結果を1回開く。拡張機能が許可済みAPIのURLとAuthorizationヘッダーを検出します。
-4. 「取得準備完了」になったら「全履歴を保存」を押す。
-5. 取得後に「接続を解除」を押す。タブを閉じた場合も接続とメモリー内の認証情報は破棄されます。
+## Usage
 
-本人の数字IDはレスポンスから自動検出します。検出できない場合だけ入力欄へ指定してください。パスワード、Cookie、Authorizationヘッダーを入力・保存する必要はありません。
+1. Log in to Funbridge Web and open the extension while that tab is active.
+2. Click "Detect traffic". Chrome showing that a debugger is attached is expected.
+3. In the same tab, open your history or a tournament result once. The extension detects the allowed API URL and the Authorization header.
+4. When the status reads "Ready to export", click "Save all history".
+5. When it finishes, click "Disconnect". Closing the tab also detaches the debugger and discards the in-memory credentials.
 
-## 出力
+Your numeric Funbridge ID is detected from the responses. Enter it in the input field only if detection fails. You never need to enter or store a password, cookie, or Authorization header.
 
-Chromeのダウンロード先に、大会1件あたり1ファイルのPBNを保存します。
+## Output
+
+One PBN file per tournament is saved to Chrome's download folder.
 
 ```
 funbridge-export/
@@ -36,53 +38,51 @@ funbridge-export/
   daily/2026-09-15_9002.pbn
 ```
 
-1ボードがPBNの1ゲームです。PBN 2.1の必須タグに加え、Funbridge固有の情報は `Funbridge` 接頭辞の補助タグに入ります。履歴一覧にしかない登録人数・獲得Bridge Points・Series期間なども、索引専用ファイルを作らず各大会のPBNタグへ畳み込みます。
+Each board is one PBN game. Besides the mandatory PBN 2.1 tags, Funbridge-specific data goes into supplemental tags prefixed with `Funbridge`, including fields that appear only in the history list, such as the registered player count, Bridge Points awarded, and the Series period.
 
-結果APIが応答しない大会はファイルを合成せず、完了表示に件数と理由を出します。
+Tournaments whose result API does not respond are skipped rather than synthesized; the completion message shows how many were skipped.
 
-## しくみ
+## How it works
 
-Chrome DevTools Protocolの `Network` イベントで、ユーザー自身の操作によって発生した実通信を1回観測します。そこで得たAPIルートとAuthorizationヘッダーを使い、**同じタブのJavaScript実行環境から**許可済みの読み取りAPIだけを呼びます。
+The extension uses `Network` events from the Chrome DevTools Protocol to observe one real request triggered by your own action. With the API route and Authorization header from that request, it calls only the allowed read-only APIs, **from the JavaScript context of the same tab**.
 
-許可するのは `/funbridge-server-ws/rest/` 以下の次の7エンドポイントだけで、実行時にもホストとパスを検証します。
+Only these seven endpoints under `/funbridge-server-ws/rest/` are allowed, and the host and path are also checked at runtime.
 
-| 用途 | エンドポイント |
+| Purpose | Endpoint |
 | --- | --- |
-| BP Circuit履歴 | `bridgePoints/historic` |
-| 大会履歴（Series / Daily / BIC） | `tournament/getTournamentArchives` |
-| 大会結果 | `result/getResultDealForTournament` |
-| ボード概要 | `result/getDealResultSummary` |
-| 契約分布 | `result/getResultForDeal` |
-| KO対戦一覧 | `tournament/getKnockoutPlayerMatches` |
-| KO対戦結果 | `tournament/getKnockoutTournamentMatch` |
+| BP Circuit history | `bridgePoints/historic` |
+| Tournament history (Series / Daily / BIC) | `tournament/getTournamentArchives` |
+| Tournament result | `result/getResultDealForTournament` |
+| Board summary | `result/getDealResultSummary` |
+| Contract distribution | `result/getResultForDeal` |
+| KO match list | `tournament/getKnockoutPlayerMatches` |
+| KO match result | `tournament/getKnockoutTournamentMatch` |
 
-FunbridgeのAPIは非公開であり、予告なく変わり得ます。取得に失敗する場合は実通信を再観測し、`extension/lib/protocol.js` のエンドポイントとレスポンス形の検出を更新してください。
+The Funbridge API is private and may change without notice. If fetching fails, observe the real traffic again and update the endpoints and response-shape detection in `extension/lib/protocol.js`.
 
-## 権限
+## Permissions
 
-| 権限 | 用途 |
+| Permission | Purpose |
 | --- | --- |
-| `debugger` | 選択中のFunbridgeタブのNetworkイベント観測と、そのタブ内での読み取りAPI実行 |
-| `activeTab` | ユーザーが拡張機能を開いたFunbridgeタブの特定 |
-| `downloads` | 整形済みPBNのローカル保存 |
-| host permissions | `*.funbridge.com` と `*.funbridge.net` に限定 |
+| `debugger` | Observe Network events of the selected Funbridge tab and run the read-only APIs inside that tab |
+| `activeTab` | Identify the Funbridge tab where you opened the extension |
+| `downloads` | Save the generated PBN files locally |
+| host permissions | Limited to `*.funbridge.com` and `*.funbridge.net` |
 
-## 開発
+## Development
 
 ```sh
 npm install
-npm test        # node:test によるユニットテスト
-npm run check   # Biome によるフォーマットとLint
+npm test        # unit tests with node:test
+npm run check   # formatting and lint with Biome
 ```
 
-テストは匿名化したレスポンスのfixtureだけを使うため、Funbridgeアカウントは不要です。`test/pbn.test.js` がPBNの必須タグ、Dealタグの並び、52枚一意、Auction・Playセクションの体裁、契約分布の整合性表示を検証します。
+The tests use only anonymized response fixtures, so no Funbridge account is needed.
 
-## 由来
+The English documents are the source of truth. When you change one, update the matching `.ja.md` translation too.
 
-もとは [bridge-portal](https://github.com/HIRO15254/bridge-portal) のスキルへ同梱していた拡張機能です。単体で使えるようリポジトリを分離し、出力をJSONからPBN 2.1へ変更しました。
-
-## ライセンス
+## License
 
 [MIT](LICENSE)
 
-Funbridgeは Goto Games の商標です。このプロジェクトは非公式であり、Goto Gamesとは関係ありません。
+Funbridge is a trademark of Goto Games. This project is unofficial and not affiliated with Goto Games.

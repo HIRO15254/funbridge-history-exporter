@@ -51,7 +51,7 @@ function sourceId(value) {
 function iso(value) {
 	const date = new Date(value);
 	if (Number.isNaN(date.getTime())) {
-		throw new Error(`日時を解釈できません: ${value}`);
+		throw new Error(`Cannot parse date: ${value}`);
 	}
 	return date.toISOString();
 }
@@ -71,7 +71,7 @@ function resultType(value) {
 	if (value === 2 || value === "RESULT_IMP") {
 		return "IMP";
 	}
-	throw new Error(`未対応のresultTypeです: ${value}`);
+	throw new Error(`Unsupported resultType: ${value}`);
 }
 
 function score(value, type) {
@@ -91,7 +91,7 @@ function contract(value) {
 	}
 	const match = contractPattern.exec(value);
 	if (!match) {
-		throw new Error(`未対応のcontractです: ${value}`);
+		throw new Error(`Unsupported contract: ${value}`);
 	}
 	const denomination = match[2] === "N" ? "NT" : match[2];
 	const doubled = { X1: "X", X2: "XX" }[match[3]] ?? "";
@@ -104,7 +104,7 @@ function card(value) {
 	}
 	const match = cardPattern.exec(value);
 	if (!match) {
-		throw new Error(`未対応のcardです: ${value}`);
+		throw new Error(`Unsupported card: ${value}`);
 	}
 	return `${match[2]}${match[1]}`;
 }
@@ -141,7 +141,7 @@ function normalizeAuction(value) {
 	return value.split("-").map((token) => {
 		const match = bidPattern.exec(token);
 		if (!match) {
-			throw new Error(`未対応のbidです: ${token}`);
+			throw new Error(`Unsupported bid: ${token}`);
 		}
 		const call =
 			{ PA: "Pass", X1: "X", X2: "XX" }[match[1]] ??
@@ -160,7 +160,7 @@ function normalizePlay(value) {
 		}
 		const match = cardPattern.exec(token);
 		if (!match) {
-			throw new Error(`未対応のplayです: ${token}`);
+			throw new Error(`Unsupported play: ${token}`);
 		}
 		actions.push({
 			card: `${match[2]}${match[1]}`,
@@ -360,7 +360,7 @@ function tournamentContext(family, capture, capturedAt) {
 	const resultPlayer = seedTournament?.resultPlayer;
 	const id = archiveId(archive);
 	if (!id) {
-		throw new Error("履歴行に大会IDがありません。");
+		throw new Error("History row has no tournament ID.");
 	}
 	const scoreType = resultType(
 		seedTournament?.resultType ?? archive.resultType ?? 1
@@ -449,7 +449,9 @@ function contractGroupTags(groupSource, hero, scoreType) {
 	for (const row of rows) {
 		const playerCount = row.nbPlayerSameGame;
 		if (!positiveInteger(playerCount)) {
-			throw new Error("契約集計の人数が正の整数ではありません。");
+			throw new Error(
+				"Contract distribution player count is not a positive integer."
+			);
 		}
 		if (row.contract === "PA") {
 			passedOutPlayerCount += playerCount;
@@ -565,11 +567,11 @@ function standardGame(entry, capture, context) {
 	const deal = summary.deal;
 	const dealId = resolveDealId(boardNumber, capture, summary);
 	if (!dealId) {
-		throw new Error(`ボード${boardNumber}のsourceDealIdがありません。`);
+		throw new Error(`Board ${boardNumber} has no sourceDealId.`);
 	}
 	const hero = heroFor(boardNumber, summary, capture.seed, dealId);
 	if (!hero) {
-		throw new Error(`ボード${boardNumber}の本人結果がありません。`);
+		throw new Error(`Board ${boardNumber} has no result for the player.`);
 	}
 	const parsedPlay = normalizePlay(deal.playList);
 	const parsedContract = contract(deal.contract);
@@ -627,7 +629,7 @@ function knockoutGame(entry, capture, context) {
 	);
 	if (!dealEntry) {
 		throw new Error(
-			`KOボード${entry.roundNumber}:${entry.boardNumber}のmatch結果がありません。`
+			`KO board ${entry.roundNumber}:${entry.boardNumber} has no match result.`
 		);
 	}
 	const deal = entry.summary.deal;
