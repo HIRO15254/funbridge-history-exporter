@@ -43,7 +43,9 @@ function render(state) {
 async function send(message) {
 	const response = await chromeApi.runtime.sendMessage(message);
 	if (!response?.ok) {
-		throw new Error(response?.error || "拡張機能との通信に失敗しました。");
+		throw new Error(
+			response?.error || "Could not communicate with the extension."
+		);
 	}
 	render(response.state);
 }
@@ -52,7 +54,7 @@ elements.connect.addEventListener("click", async () => {
 	try {
 		await send({ type: "CONNECT" });
 	} catch (error) {
-		render({ phase: "ERROR", title: "接続できません", detail: error.message });
+		render({ phase: "ERROR", title: "Cannot connect", detail: error.message });
 	}
 });
 
@@ -60,7 +62,11 @@ elements.disconnect.addEventListener("click", async () => {
 	try {
 		await send({ type: "DISCONNECT" });
 	} catch (error) {
-		render({ phase: "ERROR", title: "解除できません", detail: error.message });
+		render({
+			phase: "ERROR",
+			title: "Cannot disconnect",
+			detail: error.message
+		});
 	}
 });
 
@@ -70,7 +76,7 @@ elements.export.addEventListener("click", async () => {
 	} catch (error) {
 		render({
 			phase: "ERROR",
-			title: "取得を開始できません",
+			title: "Cannot start the export",
 			detail: error.message
 		});
 	}
@@ -85,7 +91,7 @@ chromeApi.runtime.onMessage.addListener((message) => {
 send({ type: "GET_STATE" }).catch((error) => {
 	render({
 		phase: "ERROR",
-		title: "状態を取得できません",
+		title: "Cannot load the status",
 		detail: error.message
 	});
 });

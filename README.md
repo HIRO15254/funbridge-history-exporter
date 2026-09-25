@@ -20,10 +20,10 @@ See [docs/pbn-format.md](docs/pbn-format.md) for the output tags.
 ## Usage
 
 1. Log in to Funbridge Web and open the extension while that tab is active.
-2. Click "通信を検出" (Detect traffic). Chrome showing that a debugger is attached is expected.
+2. Click "Detect traffic". Chrome showing that a debugger is attached is expected.
 3. In the same tab, open your history or a tournament result once. The extension detects the allowed API URL and the Authorization header.
-4. When the status reads "取得準備完了" (Ready), click "全履歴を保存" (Save all history).
-5. When it finishes, click "接続を解除" (Disconnect). Closing the tab also detaches the debugger and discards the in-memory credentials.
+4. When the status reads "Ready to export", click "Save all history".
+5. When it finishes, click "Disconnect". Closing the tab also detaches the debugger and discards the in-memory credentials.
 
 Your numeric Funbridge ID is detected from the responses. Enter it in the input field only if detection fails. You never need to enter or store a password, cookie, or Authorization header.
 
@@ -40,7 +40,7 @@ funbridge-export/
 
 Each board is one PBN game. Besides the mandatory PBN 2.1 tags, Funbridge-specific data goes into supplemental tags prefixed with `Funbridge`, including fields that appear only in the history list, such as the registered player count, Bridge Points awarded, and the Series period.
 
-Tournaments whose result API does not respond are skipped rather than synthesized; the completion message shows how many were skipped and why.
+Tournaments whose result API does not respond are skipped rather than synthesized; the completion message shows how many were skipped.
 
 ## How it works
 

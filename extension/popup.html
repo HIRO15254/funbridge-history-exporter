@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ja">
+<html lang="en">
 	<head>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,51 +8,53 @@
 	</head>
 	<body>
 		<main>
-			<h1>Funbridge履歴をPBNで取得</h1>
+			<h1>Export Funbridge history as PBN</h1>
 			<p class="lead">
-				Funbridgeの認証済みタブに接続し、BP
-				Circuit・Series・Dailyの履歴をPBN 2.1ファイルへ保存します。
+				Connects to your signed-in Funbridge tab and saves your BP Circuit,
+				Series, and Daily history as PBN 2.1 files.
 			</p>
 
 			<section class="status-card" aria-live="polite">
 				<div class="status-line">
 					<span id="status-dot" class="dot idle"></span>
-					<strong id="status-title">未接続</strong>
+					<strong id="status-title">Not connected</strong>
 				</div>
 				<p id="status-detail">
-					Funbridgeを開いて「通信を検出」を押してください。
+					Open a Funbridge tab and click "Detect traffic".
 				</p>
 				<progress id="progress" value="0" max="1" hidden></progress>
 			</section>
 
 			<ol class="steps">
-				<li>Funbridge Webへログインしたタブで「通信を検出」を押す</li>
+				<li>In a tab signed in to Funbridge Web, click "Detect traffic"</li>
 				<li>
-					Funbridge画面で履歴を開くか、ボードを1つ選んでAPI通信を発生させる
+					In Funbridge, open your history or a board to trigger an API request
 				</li>
-				<li>「全履歴を保存」が有効になったら実行する</li>
+				<li>Click "Save all history" once it is enabled</li>
 			</ol>
 
-			<label for="account-id">Funbridge ID（自動検出できない場合のみ）</label>
+			<label for="account-id">Funbridge ID (only if it cannot be detected)</label>
 			<input
 				id="account-id"
 				inputmode="numeric"
 				autocomplete="off"
-				placeholder="例: 1234567"
+				placeholder="e.g. 1234567"
 			>
 
 			<div class="actions">
-				<button id="connect" type="button">通信を検出</button>
+				<button id="connect" type="button">Detect traffic</button>
 				<button id="export" type="button" class="primary" disabled>
-					全履歴を保存
+					Save all history
 				</button>
 				<button id="disconnect" type="button" class="secondary" disabled>
-					接続を解除
+					Disconnect
 				</button>
 			</div>
 
 			<p class="privacy">
-				認証ヘッダーはメモリ内だけで使用し、保存するPBNやChromeストレージには書き込みません。データはFunbridgeとローカルのダウンロード先以外へ送信しません。
+				The authorization header is kept in memory only and is never written
+				to the PBN files or Chrome storage. Data is sent nowhere except
+				Funbridge and your local download folder.
 			</p>
 		</main>
 		<script type="module" src="popup.js"></script>

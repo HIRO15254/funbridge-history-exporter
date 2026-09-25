@@ -15,10 +15,14 @@ let session;
 let state = {
 	authObserved: false,
 	connected: false,
-	detail: "Funbridgeのタブを開いて「通信を検出」を押してください。",
+	detail: 'Open a Funbridge tab and click "Detect traffic".',
 	phase: "IDLE",
-	title: "未接続"
+	title: "Not connected"
 };
+
+function plural(count, noun) {
+	return `${count} ${noun}${count === 1 ? "" : "s"}`;
+}
 
 function generatorLabel() {
 	const manifest = chromeApi.runtime.getManifest();
@@ -45,7 +49,7 @@ async function activeFunbridgeTab() {
 	});
 	if (!(tab?.id && funbridgePagePattern.test(tab.url ?? ""))) {
 		throw new Error(
-			"ログイン済みのFunbridgeタブを開いてから実行してください。"
+			"Open a Funbridge tab where you are signed in, then try again."
 		);
 	}
 	return tab;
@@ -64,10 +68,10 @@ async function disconnect() {
 	publish({
 		authObserved: false,
 		connected: false,
-		detail: "Funbridgeのタブを開いて「通信を検出」を押してください。",
+		detail: 'Open a Funbridge tab and click "Detect traffic".',
 		phase: "IDLE",
 		progress: undefined,
-		title: "未接続"
+		title: "Not connected"
 	});
 }
 
@@ -97,9 +101,9 @@ async function connect() {
 		authObserved: false,
 		connected: true,
 		detail:
-			"Funbridge内で履歴や大会結果を1回開いてください。API認証をメモリー内だけで検出します。",
+			"Open your history or a tournament result in Funbridge once. The API authorization is detected and kept in memory only.",
 		phase: "MONITORING",
-		title: "APIリクエストを待機中"
+		title: "Waiting for an API request"
 	});
 	return publicState();
 }
@@ -113,9 +117,9 @@ function observeAuthorization(current, parsed, headers) {
 	current.apiRoot = parsed.root;
 	publish({
 		authObserved: true,
-		detail: "認証済みAPIを検出しました。全履歴を取得できます。",
+		detail: "Authenticated API detected. You can now export your full history.",
 		phase: "READY",
-		title: "取得準備完了"
+		title: "Ready to export"
 	});
 }
 
@@ -152,17 +156,17 @@ chromeApi.debugger.onDetach.addListener((source) => {
 		authObserved: false,
 		connected: false,
 		detail:
-			"ブラウザーとの接続が解除されました。必要なら再度検出してください。",
+			"The debugger was detached from the tab. Detect traffic again if needed.",
 		phase: "IDLE",
 		progress: undefined,
-		title: "接続解除"
+		title: "Disconnected"
 	});
 });
 
 async function apiPost(endpoint, body) {
 	const current = session;
 	if (!(current?.authorization && current.apiRoot)) {
-		throw new Error("認証済みAPIが検出されていません。");
+		throw new Error("No authenticated API has been detected yet.");
 	}
 	const expression = runtimeFetchExpression(
 		current.apiRoot,
@@ -195,13 +199,13 @@ async function downloadPbn(path, text) {
 async function startExport(accountId) {
 	const current = session;
 	if (!(current?.authorization && current.apiRoot)) {
-		throw new Error("認証済みAPIが検出されていません。");
+		throw new Error("No authenticated API has been detected yet.");
 	}
 	publish({
-		detail: "BP Circuit・Series・Dailyの履歴を取得しています。",
+		detail: "Fetching BP Circuit, Series, and Daily history.",
 		phase: "EXPORTING",
 		progress: { current: 0, total: 1 },
-		title: "全履歴を取得中"
+		title: "Exporting all history"
 	});
 	try {
 		const result = await exportAllHistory({
@@ -214,28 +218,28 @@ async function startExport(accountId) {
 			templates: current.templates
 		});
 		publish({
-			detail: `${result.files.length}個のPBNファイルをダウンロードしています。`,
+			detail: `Downloading ${plural(result.files.length, "PBN file")}.`,
 			progress: { current: 0, total: result.files.length }
 		});
 		for (const [index, file] of result.files.entries()) {
 			await downloadPbn(file.path, file.text);
 			publish({
-				detail: `${index + 1}/${result.files.length}ファイルを保存しました。`,
+				detail: `Saved ${index + 1}/${result.files.length} files.`,
 				progress: { current: index + 1, total: result.files.length }
 			});
 		}
 		publish({
-			detail: `${result.summary.tournamentFileCount}大会・${result.summary.boardCount}ボードをPBNで保存しました。履歴索引${result.summary.indexCount}件のうち取得不能: ${result.summary.skipped.length}件。接続解除で認証情報を破棄できます。`,
+			detail: `Saved ${plural(result.summary.tournamentFileCount, "tournament")} and ${plural(result.summary.boardCount, "board")} as PBN. Skipped ${result.summary.skipped.length} of ${plural(result.summary.indexCount, "tournament")} in the history. Disconnect to discard the credentials.`,
 			phase: "READY",
 			progress: undefined,
-			title: "取得完了"
+			title: "Export complete"
 		});
 	} catch (error) {
 		publish({
 			detail: error instanceof Error ? error.message : String(error),
 			phase: "ERROR",
 			progress: undefined,
-			title: "取得に失敗しました"
+			title: "Export failed"
 		});
 	}
 }
@@ -248,7 +252,7 @@ chromeApi.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 	if (message.type === "EXPORT") {
 		if (state.phase === "EXPORTING") {
 			sendResponse({
-				error: "すでに取得中です。",
+				error: "An export is already running.",
 				ok: false,
 				state: publicState()
 			});
@@ -258,7 +262,7 @@ chromeApi.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 			publish({
 				detail: error instanceof Error ? error.message : String(error),
 				phase: "ERROR",
-				title: "取得に失敗しました"
+				title: "Export failed"
 			});
 		});
 		sendResponse({ ok: true, state: publicState() });
@@ -268,7 +272,7 @@ chromeApi.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 	const action = actions[message.type];
 	if (!action) {
 		sendResponse({
-			error: "不明な操作です。",
+			error: "Unknown action.",
 			ok: false,
 			state: publicState()
 		});
@@ -283,7 +287,7 @@ chromeApi.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 				connected: Boolean(session),
 				detail: error instanceof Error ? error.message : String(error),
 				phase: "ERROR",
-				title: "操作に失敗しました"
+				title: "Action failed"
 			});
 			sendResponse({ error: state.detail, ok: false, state: publicState() });
 		});

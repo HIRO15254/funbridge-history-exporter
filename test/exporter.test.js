@@ -89,7 +89,7 @@ test("records an unreachable tournament as skipped instead of writing a file", a
 				? { data: { offset: 0, rows: [archive], totalSize: 1 } }
 				: { data: { rows: [], totalSize: 0 } };
 		}
-		throw new Error("結果が利用できません。");
+		throw new Error("Results unavailable.");
 	};
 	const result = await exportAllHistory({
 		accountId: "123456",
@@ -101,7 +101,7 @@ test("records an unreachable tournament as skipped instead of writing a file", a
 	assert.deepEqual(result.summary.skipped, [
 		{
 			family: "DAILY",
-			reason: "結果が利用できません。",
+			reason: "Results unavailable.",
 			sourceTournamentId: "9001",
 			title: "Daily fixture"
 		}

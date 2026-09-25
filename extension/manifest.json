@@ -2,7 +2,7 @@
 	"manifest_version": 3,
 	"name": "Funbridge History Exporter",
 	"version": "2.0.0",
-	"description": "認証済みFunbridgeタブから大会履歴を取得し、PBN 2.1形式でローカル保存します。",
+	"description": "Exports your tournament history from a signed-in Funbridge tab and saves it locally as PBN 2.1 files.",
 	"permissions": ["activeTab", "debugger", "downloads"],
 	"host_permissions": [
 		"https://*.funbridge.com/*",
@@ -13,7 +13,7 @@
 		"type": "module"
 	},
 	"action": {
-		"default_title": "Funbridge履歴をPBNで取得",
+		"default_title": "Export Funbridge history as PBN",
 		"default_popup": "popup.html"
 	}
 }

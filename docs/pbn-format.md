@@ -147,4 +147,4 @@ Authorization headers, cookies, raw responses, HAR files, network request IDs, o
 
 ## Tournaments without results
 
-A tournament that appears in the history list but whose result API does not respond gets no file. The popup's completion message shows how many were skipped and why.
+A tournament that appears in the history list but whose result API does not respond gets no file. The popup's completion message shows how many were skipped.

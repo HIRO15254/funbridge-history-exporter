@@ -73,7 +73,7 @@ export function parsePostData(value) {
 
 export function runtimeFetchExpression(root, endpoint, authorization, body) {
 	if (!endpointSet.has(endpoint)) {
-		throw new Error(`許可されていないFunbridge APIです: ${endpoint}`);
+		throw new Error(`Funbridge API not allowed: ${endpoint}`);
 	}
 	const rootUrl = new URL(`${root}/`);
 	if (
@@ -81,7 +81,7 @@ export function runtimeFetchExpression(root, endpoint, authorization, body) {
 		!rootUrl.hostname.endsWith(".funbridge.net") ||
 		!rootUrl.pathname.endsWith("/rest/")
 	) {
-		throw new Error("Funbridge APIルートを検証できません。");
+		throw new Error("Cannot verify the Funbridge API root.");
 	}
 	const url = new URL(endpoint, rootUrl).toString();
 	const options = {
@@ -99,13 +99,13 @@ export function runtimeFetchExpression(root, endpoint, authorization, body) {
 export function unwrapApiResult(result, endpoint) {
 	const value = result?.result?.value;
 	if (result?.exceptionDetails || !value) {
-		throw new Error(`${endpoint}: ブラウザー内fetchを実行できませんでした。`);
+		throw new Error(`${endpoint}: in-page fetch failed.`);
 	}
 	let json;
 	try {
 		json = JSON.parse(value.text);
 	} catch {
-		throw new Error(`${endpoint}: JSONではないレスポンスです。`);
+		throw new Error(`${endpoint}: response is not JSON.`);
 	}
 	if (value.status !== 200 || json?.exception) {
 		const reason =
@@ -178,7 +178,7 @@ export function resultDealTournament(payload) {
 		}
 	});
 	if (!found) {
-		throw new Error("大会結果レスポンスの構造を認識できません。");
+		throw new Error("Unrecognized tournament result response shape.");
 	}
 	return found;
 }
@@ -191,7 +191,7 @@ export function dealSummary(payload) {
 		}
 	});
 	if (!found) {
-		throw new Error("ボード概要レスポンスの構造を認識できません。");
+		throw new Error("Unrecognized board summary response shape.");
 	}
 	return found;
 }
@@ -204,7 +204,7 @@ export function knockoutMatches(payload) {
 		}
 	});
 	if (!found) {
-		throw new Error("KO対戦一覧レスポンスの構造を認識できません。");
+		throw new Error("Unrecognized KO match list response shape.");
 	}
 	return found;
 }
@@ -217,7 +217,7 @@ export function knockoutMatch(payload) {
 		}
 	});
 	if (!found) {
-		throw new Error("KO対戦結果レスポンスの構造を認識できません。");
+		throw new Error("Unrecognized KO match result response shape.");
 	}
 	return found;
 }
