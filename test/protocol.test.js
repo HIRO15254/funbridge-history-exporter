@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
 	authorizationFrom,
+	describeObservedCall,
 	ENDPOINTS,
 	isFunbridgePage,
 	parseApiUrl,
@@ -131,4 +132,19 @@ test("treats an empty successful body as an empty payload", () => {
 			unwrapApiResult({ result: { value: { status: 401, text: "" } } }, "x"),
 		/HTTP 401, empty body/
 	);
+});
+
+test("describes an observed Funbridge call by host, path and body keys only", () => {
+	assert.equal(
+		describeObservedCall(
+			`${root}/tournament/getArchives`,
+			'{"offset":0,"categoryID":6,"nbMax":20}'
+		),
+		"example.funbridge.net/tournament/getArchives {categoryID,nbMax,offset}"
+	);
+	assert.equal(
+		describeObservedCall(`${root}/${ENDPOINTS.bpHistory}`),
+		`example.funbridge.net/${ENDPOINTS.bpHistory}`
+	);
+	assert.equal(describeObservedCall("https://example.invalid/x"), undefined);
 });

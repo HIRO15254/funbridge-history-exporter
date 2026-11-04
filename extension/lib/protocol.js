@@ -49,6 +49,27 @@ export function parseApiUrl(url) {
 	}
 }
 
+// Names only (host and path after the REST marker, plus POST body keys), so a
+// failed export can say which Funbridge APIs the page really used. No values.
+export function describeObservedCall(url, postData) {
+	try {
+		const parsed = new URL(url);
+		const markerIndex = parsed.pathname.indexOf(API_MARKER);
+		if (
+			parsed.protocol !== "https:" ||
+			!parsed.hostname.endsWith(".funbridge.net") ||
+			markerIndex < 0
+		) {
+			return undefined;
+		}
+		const path = parsed.pathname.slice(markerIndex + API_MARKER.length);
+		const keys = Object.keys(parsePostData(postData)).sort();
+		return `${parsed.hostname}/${path}${keys.length ? ` {${keys.join(",")}}` : ""}`;
+	} catch {
+		return undefined;
+	}
+}
+
 export function authorizationFrom(headers = {}) {
 	const key = Object.keys(headers).find(
 		(name) => name.toLowerCase() === "authorization"

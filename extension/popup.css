@@ -59,6 +59,9 @@ h1 {
 	margin: 8px 0 0;
 	font-size: 13px;
 	color: #536174;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	user-select: text;
 }
 progress {
 	width: 100%;

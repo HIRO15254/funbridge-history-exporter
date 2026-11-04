@@ -1,6 +1,7 @@
 import { exportAllHistory } from "./lib/exporter.js";
 import {
 	authorizationFrom,
+	describeObservedCall,
 	parseApiUrl,
 	parsePostData,
 	runtimeFetchExpression,
@@ -93,6 +94,7 @@ async function connect() {
 	}
 	session = {
 		debuggee,
+		observedCalls: new Set(),
 		pendingRequests: new Map(),
 		tabId: tab.id,
 		templates: {}
@@ -129,6 +131,13 @@ chromeApi.debugger.onEvent.addListener((source, method, params) => {
 		return;
 	}
 	if (method === "Network.requestWillBeSent") {
+		const observed = describeObservedCall(
+			params.request?.url,
+			params.request?.postData
+		);
+		if (observed && current.observedCalls.size < 200) {
+			current.observedCalls.add(observed);
+		}
 		const parsed = parseApiUrl(params.request?.url);
 		if (!parsed) {
 			return;
@@ -239,8 +248,12 @@ async function startExport(accountId) {
 			title: "Export complete"
 		});
 	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		const observed = [...(current.observedCalls ?? [])];
 		publish({
-			detail: error instanceof Error ? error.message : String(error),
+			detail: observed.length
+				? `${message}\n\nFunbridge APIs seen in this tab:\n${observed.join("\n")}`
+				: message,
 			phase: "ERROR",
 			progress: undefined,
 			title: "Export failed"
