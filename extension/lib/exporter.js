@@ -23,6 +23,7 @@ function sourceTournamentId(row) {
 		row?.sourceTournamentId ??
 		row?.tournamentID ??
 		row?.tourIDstr ??
+		row?.tournamentId ??
 		row?.id ??
 		row?.ID;
 	if (value === undefined || value === null || value === "") {
@@ -130,10 +131,8 @@ async function collectGroups(post, sourceDealId, categoryID) {
 
 async function collectSummary(post, sourceDealId, categoryID, matchId) {
 	const payload = await post(ENDPOINTS.dealSummary, {
-		dealID:
-			categoryID === 6 && numericIdPattern.test(String(sourceDealId))
-				? Number(sourceDealId)
-				: String(sourceDealId),
+		// The web app sends a string deal ID for every category, Daily included.
+		dealID: String(sourceDealId),
 		categoryID,
 		nbMaxMostPlayedContracts: 5,
 		...(matchId ? { matchId } : {})
@@ -309,8 +308,9 @@ async function optionalFamily(family, unavailable, load) {
 }
 
 async function collectArchives(post, templates, shapes) {
+	// bridgePoints/historic pages with nbMax, not count.
 	const historyBody = {
-		count: 50,
+		nbMax: 50,
 		offset: 0,
 		...(templates[ENDPOINTS.bpHistory]?.body ?? {})
 	};

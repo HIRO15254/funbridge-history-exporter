@@ -188,6 +188,7 @@ const tournamentId = (row) =>
 	row?.sourceTournamentId ??
 	row?.tournamentID ??
 	row?.tourIDstr ??
+	row?.tournamentId ??
 	row?.id ??
 	row?.ID;
 
@@ -222,12 +223,21 @@ export function archivePage(payload) {
 }
 
 export function resultDealTournament(payload) {
+	// getResultForDeal answers Daily boards with tournament: null, so a row
+	// list on its own is enough; one that also names its tournament wins.
 	let found;
+	let fallback;
 	visitObjects(payload, (value) => {
-		if (!found && Array.isArray(value.listResultDeal) && value.tournament) {
+		if (found || !Array.isArray(value.listResultDeal)) {
+			return;
+		}
+		if (value.tournament) {
 			found = value;
+		} else {
+			fallback ??= value;
 		}
 	});
+	found ??= fallback;
 	if (!found) {
 		throw new Error("Unrecognized tournament result response shape.");
 	}

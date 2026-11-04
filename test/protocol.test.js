@@ -167,3 +167,19 @@ test("reads the archive list in the shape result/getTournamentArchives returns",
 	assert.equal(page.totalSize, 2);
 	assert.equal(page.offset, 0);
 });
+
+test("accepts a contract distribution whose tournament is null", async () => {
+	const { resultDealTournament } = await import("../extension/lib/protocol.js");
+	const groups = resultDealTournament({
+		data: {
+			resultDealTournament: {
+				listResultDeal: [{ dealIDstr: "142496", contract: "3N" }],
+				tournament: null,
+				offset: 0,
+				totalSize: 73
+			}
+		}
+	});
+	assert.equal(groups.totalSize, 73);
+	assert.throws(() => resultDealTournament({ data: {} }), /Unrecognized/);
+});

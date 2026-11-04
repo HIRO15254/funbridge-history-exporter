@@ -61,7 +61,7 @@ test("walks history, boards and contract groups, then writes one PBN per tournam
 	assert.equal(
 		calls.find(({ endpoint }) => endpoint === ENDPOINTS.dealSummary).body
 			.dealID,
-		7001
+		"7001"
 	);
 });
 
@@ -211,4 +211,40 @@ test("says how many history rows were found when nothing can be exported", async
 			return true;
 		}
 	);
+});
+
+test("reads BP Circuit history rows keyed by tournamentId", async () => {
+	const calls = [];
+	const post = (endpoint, body) => {
+		calls.push({ endpoint, body });
+		if (endpoint === ENDPOINTS.bpHistory) {
+			return {
+				exception: null,
+				data: {
+					bridgePointsTournaments: [
+						{ id: null, tournamentId: "692db557a0208a3529863465", title: "BP" }
+					],
+					totalSize: 1,
+					offset: 0,
+					nbMax: 45
+				}
+			};
+		}
+		if (endpoint === ENDPOINTS.tournamentArchives) {
+			return { data: { archives: [], totalSize: 0 } };
+		}
+		throw new Error("Results unavailable.");
+	};
+	const result = await exportAllHistory({
+		accountId: "123456",
+		post,
+		templates: {}
+	});
+	assert.equal(result.summary.indexCount, 1);
+	assert.equal(
+		result.summary.skipped[0].sourceTournamentId,
+		"692db557a0208a3529863465"
+	);
+	assert.equal(calls[0].body.nbMax, 50);
+	assert.equal(calls[0].body.count, undefined);
 });
