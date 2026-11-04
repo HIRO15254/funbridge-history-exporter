@@ -53,7 +53,7 @@ Chrome DevTools Protocolの `Network` イベントで、ユーザー自身の操
 | 用途 | エンドポイント |
 | --- | --- |
 | BP Circuit履歴 | `bridgePoints/historic` |
-| 大会履歴（Series / Daily / BIC） | `tournament/getTournamentArchives` |
+| 大会履歴（Series / Daily / BIC） | `result/getTournamentArchives` |
 | 大会結果 | `result/getResultDealForTournament` |
 | ボード概要 | `result/getDealResultSummary` |
 | 契約分布 | `result/getResultForDeal` |

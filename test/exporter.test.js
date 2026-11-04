@@ -171,7 +171,7 @@ test("keeps exporting when the Series or Daily history list is unavailable", asy
 	const post = (endpoint, body) => {
 		if (endpoint === ENDPOINTS.tournamentArchives && body.categoryID === 8) {
 			throw new Error(
-				"tournament/getTournamentArchives: response is not JSON (HTTP 404)."
+				"result/getTournamentArchives: response is not JSON (HTTP 404)."
 			);
 		}
 		return stubApi().post(endpoint, body);
@@ -185,8 +185,7 @@ test("keeps exporting when the Series or Daily history list is unavailable", asy
 	assert.deepEqual(result.summary.unavailableFamilies, [
 		{
 			family: "SERIES",
-			reason:
-				"tournament/getTournamentArchives: response is not JSON (HTTP 404)."
+			reason: "result/getTournamentArchives: response is not JSON (HTTP 404)."
 		}
 	]);
 });
@@ -197,7 +196,7 @@ test("says how many history rows were found when nothing can be exported", async
 			return { data: { listHistoric: [], totalSize: 0 } };
 		}
 		throw new Error(
-			"tournament/getTournamentArchives: response is not JSON (HTTP 404)."
+			"result/getTournamentArchives: response is not JSON (HTTP 404)."
 		);
 	};
 	await assert.rejects(

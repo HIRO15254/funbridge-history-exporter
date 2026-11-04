@@ -116,7 +116,7 @@ test("explains a non-JSON response with its status, type and a short body", () =
 						}
 					}
 				},
-				"tournament/getTournamentArchives"
+				"result/getTournamentArchives"
 			),
 		/not JSON \(HTTP 400, text\/html, body: "HTTP Status 400 – Bad Request"\)/
 	);
@@ -147,4 +147,23 @@ test("describes an observed Funbridge call by host, path and body keys only", ()
 		`example.funbridge.net/${ENDPOINTS.bpHistory}`
 	);
 	assert.equal(describeObservedCall("https://example.invalid/x"), undefined);
+});
+
+test("reads the archive list in the shape result/getTournamentArchives returns", async () => {
+	const { archivePage } = await import("../extension/lib/protocol.js");
+	const page = archivePage({
+		exception: null,
+		data: {
+			offset: 0,
+			totalSize: 2,
+			archives: [
+				{ categoryID: 6, tournamentID: "11457", listPlayedDeals: ["1", "2"] },
+				{ categoryID: 6, tournamentID: "11458", listPlayedDeals: ["3"] }
+			],
+			nbQualifTournaments: 0
+		}
+	});
+	assert.equal(page.rows.length, 2);
+	assert.equal(page.totalSize, 2);
+	assert.equal(page.offset, 0);
 });

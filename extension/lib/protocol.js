@@ -7,7 +7,7 @@ export const ENDPOINTS = Object.freeze({
 	knockoutMatch: "tournament/getKnockoutTournamentMatch",
 	knockoutMatches: "tournament/getKnockoutPlayerMatches",
 	resultTournament: "result/getResultDealForTournament",
-	tournamentArchives: "tournament/getTournamentArchives"
+	tournamentArchives: "result/getTournamentArchives"
 });
 
 const endpointSet = new Set(Object.values(ENDPOINTS));

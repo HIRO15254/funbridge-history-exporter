@@ -51,7 +51,7 @@ Only these seven endpoints under `/funbridge-server-ws/rest/` are allowed, and t
 | Purpose | Endpoint |
 | --- | --- |
 | BP Circuit history | `bridgePoints/historic` |
-| Tournament history (Series / Daily / BIC) | `tournament/getTournamentArchives` |
+| Tournament history (Series / Daily / BIC) | `result/getTournamentArchives` |
 | Tournament result | `result/getResultDealForTournament` |
 | Board summary | `result/getDealResultSummary` |
 | Contract distribution | `result/getResultForDeal` |

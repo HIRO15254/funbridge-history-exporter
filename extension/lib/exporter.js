@@ -299,8 +299,7 @@ async function optionalFamily(family, unavailable, load) {
 	try {
 		return await load();
 	} catch (error) {
-		// One history list failing (Funbridge answered 404 for Series/Daily
-		// archives on some accounts) must not throw away the others.
+		// One history list failing must not throw away the others.
 		unavailable.push({
 			family,
 			reason: error instanceof Error ? error.message : String(error)
