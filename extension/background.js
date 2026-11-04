@@ -135,7 +135,11 @@ chromeApi.debugger.onEvent.addListener((source, method, params) => {
 		}
 		const body = parsePostData(params.request?.postData);
 		current.pendingRequests.set(params.requestId, parsed);
-		current.templates[parsed.endpoint] = { body, url: params.request.url };
+		const template = { body, url: params.request.url };
+		current.templates[parsed.endpoint] = template;
+		if (body.categoryID !== undefined) {
+			current.templates[`${parsed.endpoint}#${body.categoryID}`] = template;
+		}
 		observeAuthorization(current, parsed, params.request?.headers);
 		return;
 	}

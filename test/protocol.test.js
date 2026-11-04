@@ -101,3 +101,34 @@ test("surfaces the API error instead of the raw response body", () => {
 	);
 	assert.throws(() => unwrapApiResult({ exceptionDetails: {} }, "x"));
 });
+
+test("explains a non-JSON response with its status, type and a short body", () => {
+	assert.throws(
+		() =>
+			unwrapApiResult(
+				{
+					result: {
+						value: {
+							contentType: "text/html;charset=utf-8",
+							status: 400,
+							text: "<html><body><h1>HTTP Status 400 – Bad Request</h1></body></html>"
+						}
+					}
+				},
+				"tournament/getTournamentArchives"
+			),
+		/not JSON \(HTTP 400, text\/html, body: "HTTP Status 400 – Bad Request"\)/
+	);
+});
+
+test("treats an empty successful body as an empty payload", () => {
+	assert.deepEqual(
+		unwrapApiResult({ result: { value: { status: 200, text: "" } } }, "x"),
+		{}
+	);
+	assert.throws(
+		() =>
+			unwrapApiResult({ result: { value: { status: 401, text: "" } } }, "x"),
+		/HTTP 401, empty body/
+	);
+});

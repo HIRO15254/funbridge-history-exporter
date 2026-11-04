@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { exportAllHistory } from "../extension/lib/exporter.js";
+import {
+	archiveRequestBody,
+	exportAllHistory
+} from "../extension/lib/exporter.js";
 import { ENDPOINTS } from "../extension/lib/protocol.js";
 import { archive, capture, tournament } from "./fixtures/capture.js";
 
@@ -114,4 +117,52 @@ test("fails loudly when the player id cannot be resolved", async () => {
 		() => exportAllHistory({ post, templates: {} }),
 		/Funbridge ID/
 	);
+});
+
+test("builds archive requests from the body the page actually sent", () => {
+	const templates = {
+		[ENDPOINTS.tournamentArchives]: {
+			body: { categoryID: 6, count: 20, offset: 40, tournamentId: "1", type: 2 }
+		},
+		[`${ENDPOINTS.tournamentArchives}#8`]: {
+			body: { categoryID: 8, count: 30, offset: 0, filter: "series" }
+		}
+	};
+	assert.deepEqual(archiveRequestBody(templates, 6), {
+		categoryID: 6,
+		count: 20,
+		offset: 0,
+		type: 2
+	});
+	assert.deepEqual(archiveRequestBody(templates, 8), {
+		categoryID: 8,
+		count: 30,
+		filter: "series",
+		offset: 0
+	});
+	assert.deepEqual(archiveRequestBody({}, 32, { tournamentId: "77" }), {
+		categoryID: 32,
+		count: 50,
+		offset: 0,
+		tournamentId: "77"
+	});
+});
+
+test("sends the observed archive template when walking Daily history", async () => {
+	const { calls, post } = stubApi();
+	await exportAllHistory({
+		accountId: "123456",
+		post,
+		templates: {
+			[ENDPOINTS.tournamentArchives]: {
+				body: { categoryID: 6, count: 25, offset: 0, extra: true }
+			}
+		}
+	});
+	const daily = calls.find(
+		({ body, endpoint }) =>
+			endpoint === ENDPOINTS.tournamentArchives && body.categoryID === 6
+	);
+	assert.equal(daily.body.extra, true);
+	assert.equal(daily.body.count, 25);
 });

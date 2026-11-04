@@ -93,7 +93,30 @@ export function runtimeFetchExpression(root, endpoint, authorization, body) {
 		},
 		body: JSON.stringify(body)
 	};
-	return `fetch(${JSON.stringify(url)},${JSON.stringify(options)}).then(async response=>({status:response.status,text:await response.text()}))`;
+	return `fetch(${JSON.stringify(url)},${JSON.stringify(options)}).then(async response=>({status:response.status,contentType:response.headers.get("content-type")??"",redirected:response.redirected,text:await response.text()}))`;
+}
+
+const snippetLength = 160;
+
+function responseSnippet(text) {
+	return String(text ?? "")
+		.replace(/<[^>]*>/g, " ")
+		.replace(/\s+/g, " ")
+		.trim()
+		.slice(0, snippetLength);
+}
+
+function describeNonJson(value) {
+	const parts = [`HTTP ${value.status}`];
+	if (value.contentType) {
+		parts.push(value.contentType.split(";")[0]);
+	}
+	if (value.redirected) {
+		parts.push("redirected");
+	}
+	const snippet = responseSnippet(value.text);
+	parts.push(snippet ? `body: "${snippet}"` : "empty body");
+	return parts.join(", ");
 }
 
 export function unwrapApiResult(result, endpoint) {
@@ -101,13 +124,20 @@ export function unwrapApiResult(result, endpoint) {
 	if (result?.exceptionDetails || !value) {
 		throw new Error(`${endpoint}: in-page fetch failed.`);
 	}
+	const ok = value.status >= 200 && value.status < 300;
+	if (ok && String(value.text ?? "").trim() === "") {
+		// Funbridge answers some empty lists with no body at all.
+		return {};
+	}
 	let json;
 	try {
 		json = JSON.parse(value.text);
 	} catch {
-		throw new Error(`${endpoint}: response is not JSON.`);
+		throw new Error(
+			`${endpoint}: response is not JSON (${describeNonJson(value)}).`
+		);
 	}
-	if (value.status !== 200 || json?.exception) {
+	if (!ok || json?.exception) {
 		const reason =
 			json?.exception?.message ?? json?.message ?? `HTTP ${value.status}`;
 		throw new Error(`${endpoint}: ${reason}`);
