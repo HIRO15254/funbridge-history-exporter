@@ -166,3 +166,27 @@ test("sends the observed archive template when walking Daily history", async () 
 	assert.equal(daily.body.extra, true);
 	assert.equal(daily.body.count, 25);
 });
+
+test("keeps exporting when the Series or Daily history list is unavailable", async () => {
+	const post = (endpoint, body) => {
+		if (endpoint === ENDPOINTS.tournamentArchives && body.categoryID === 8) {
+			throw new Error(
+				"tournament/getTournamentArchives: response is not JSON (HTTP 404)."
+			);
+		}
+		return stubApi().post(endpoint, body);
+	};
+	const result = await exportAllHistory({
+		accountId: "123456",
+		post,
+		templates: {}
+	});
+	assert.equal(result.files.length, 1);
+	assert.deepEqual(result.summary.unavailableFamilies, [
+		{
+			family: "SERIES",
+			reason:
+				"tournament/getTournamentArchives: response is not JSON (HTTP 404)."
+		}
+	]);
+});

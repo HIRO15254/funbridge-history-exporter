@@ -241,8 +241,15 @@ async function startExport(accountId) {
 				progress: { current: index + 1, total: result.files.length }
 			});
 		}
+		const unavailable = result.summary.unavailableFamilies.map(
+			({ family, reason }) => `${family} history could not be read: ${reason}`
+		);
 		publish({
-			detail: `Saved ${plural(result.summary.tournamentFileCount, "tournament")} and ${plural(result.summary.boardCount, "board")} as PBN. Skipped ${result.summary.skipped.length} of ${plural(result.summary.indexCount, "tournament")} in the history. Disconnect to discard the credentials.`,
+			detail: [
+				`Saved ${plural(result.summary.tournamentFileCount, "tournament")} and ${plural(result.summary.boardCount, "board")} as PBN. Skipped ${result.summary.skipped.length} of ${plural(result.summary.indexCount, "tournament")} in the history.`,
+				...unavailable,
+				"Disconnect to discard the credentials."
+			].join("\n\n"),
 			phase: "READY",
 			progress: undefined,
 			title: "Export complete"

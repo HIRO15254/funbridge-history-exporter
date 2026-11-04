@@ -275,6 +275,20 @@ function accountIdFor(captures, provided) {
 		.find((value) => value && numericIdPattern.test(String(value)));
 }
 
+async function optionalFamily(family, unavailable, load) {
+	try {
+		return await load();
+	} catch (error) {
+		// One history list failing (Funbridge answered 404 for Series/Daily
+		// archives on some accounts) must not throw away the others.
+		unavailable.push({
+			family,
+			reason: error instanceof Error ? error.message : String(error)
+		});
+		return [];
+	}
+}
+
 async function collectArchives(post, templates) {
 	const historyBody = {
 		count: 50,
@@ -282,19 +296,25 @@ async function collectArchives(post, templates) {
 		...(templates[ENDPOINTS.bpHistory]?.body ?? {})
 	};
 	historyBody.offset = 0;
-	return {
+	const unavailable = [];
+	const archives = {
 		BP_CIRCUIT: await collectPages(post, ENDPOINTS.bpHistory, historyBody),
-		SERIES: await collectPages(
-			post,
-			ENDPOINTS.tournamentArchives,
-			archiveRequestBody(templates, 8)
+		SERIES: await optionalFamily("SERIES", unavailable, () =>
+			collectPages(
+				post,
+				ENDPOINTS.tournamentArchives,
+				archiveRequestBody(templates, 8)
+			)
 		),
-		DAILY: await collectPages(
-			post,
-			ENDPOINTS.tournamentArchives,
-			archiveRequestBody(templates, 6)
+		DAILY: await optionalFamily("DAILY", unavailable, () =>
+			collectPages(
+				post,
+				ENDPOINTS.tournamentArchives,
+				archiveRequestBody(templates, 6)
+			)
 		)
 	};
+	return { archives, unavailable };
 }
 
 function captureOne(post, family, row, options) {
@@ -356,7 +376,7 @@ export async function exportAllHistory({
 	onProgress
 }) {
 	const capturedAt = new Date().toISOString();
-	const archives = await collectArchives(post, templates);
+	const { archives, unavailable } = await collectArchives(post, templates);
 	const { captures, indexCount, skipped } = await captureTournaments(
 		post,
 		archives,
@@ -394,6 +414,7 @@ export async function exportAllHistory({
 			),
 			indexCount,
 			skipped,
+			unavailableFamilies: unavailable,
 			tournamentFileCount: captures.length
 		}
 	};
