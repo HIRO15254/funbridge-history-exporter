@@ -248,6 +248,9 @@ async function startExport(accountId) {
 			detail: [
 				`Saved ${plural(result.summary.tournamentFileCount, "tournament")} and ${plural(result.summary.boardCount, "board")} as PBN. Skipped ${result.summary.skipped.length} of ${plural(result.summary.indexCount, "tournament")} in the history.`,
 				...unavailable,
+				...result.summary.skipped
+					.slice(0, 3)
+					.map((row) => `Skipped ${row.family} "${row.title}": ${row.reason}`),
 				"Disconnect to discard the credentials."
 			].join("\n\n"),
 			phase: "READY",

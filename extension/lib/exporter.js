@@ -39,12 +39,32 @@ function uniqueRows(rows) {
 	return [...byId.values()];
 }
 
-async function collectPages(post, endpoint, initialBody) {
+// Key names and array lengths only (never values), so an empty list can be
+// told apart from a response shape the parser does not recognise.
+export function describeShape(value, depth = 0) {
+	if (Array.isArray(value)) {
+		return `[${value.length}]`;
+	}
+	if (!value || typeof value !== "object") {
+		return typeof value;
+	}
+	if (depth >= 2) {
+		return "{…}";
+	}
+	return `{${Object.entries(value)
+		.map(([key, child]) => `${key}:${describeShape(child, depth + 1)}`)
+		.join(",")}}`;
+}
+
+async function collectPages(post, endpoint, initialBody, shapes) {
 	const rows = [];
 	let offset = Number(initialBody.offset ?? 0);
 	let expected;
 	for (let pageNumber = 0; pageNumber < 100; pageNumber++) {
 		const payload = await post(endpoint, { ...initialBody, offset });
+		if (pageNumber === 0 && shapes) {
+			shapes[endpoint] = describeShape(payload).slice(0, 400);
+		}
 		const page = archivePage(payload);
 		if (expected === undefined) {
 			expected = page.totalSize;
@@ -289,7 +309,7 @@ async function optionalFamily(family, unavailable, load) {
 	}
 }
 
-async function collectArchives(post, templates) {
+async function collectArchives(post, templates, shapes) {
 	const historyBody = {
 		count: 50,
 		offset: 0,
@@ -298,7 +318,12 @@ async function collectArchives(post, templates) {
 	historyBody.offset = 0;
 	const unavailable = [];
 	const archives = {
-		BP_CIRCUIT: await collectPages(post, ENDPOINTS.bpHistory, historyBody),
+		BP_CIRCUIT: await collectPages(
+			post,
+			ENDPOINTS.bpHistory,
+			historyBody,
+			shapes
+		),
 		SERIES: await optionalFamily("SERIES", unavailable, () =>
 			collectPages(
 				post,
@@ -376,15 +401,33 @@ export async function exportAllHistory({
 	onProgress
 }) {
 	const capturedAt = new Date().toISOString();
-	const { archives, unavailable } = await collectArchives(post, templates);
+	const shapes = {};
+	const { archives, unavailable } = await collectArchives(
+		post,
+		templates,
+		shapes
+	);
 	const { captures, indexCount, skipped } = await captureTournaments(
 		post,
 		archives,
 		{ accountId, onProgress, templates }
 	);
 
+	if (indexCount === 0) {
+		const lines = [
+			`No tournament could be exported. History rows found: BP Circuit ${archives.BP_CIRCUIT.length}, Series ${archives.SERIES.length}, Daily ${archives.DAILY.length}.`,
+			...unavailable.map(
+				({ family, reason }) => `${family} history could not be read: ${reason}`
+			),
+			...(archives.BP_CIRCUIT.length === 0 && shapes[ENDPOINTS.bpHistory]
+				? [`BP Circuit response shape: ${shapes[ENDPOINTS.bpHistory]}`]
+				: [])
+		];
+		throw new Error(lines.join("\n"));
+	}
+
 	const detectedAccountId = accountIdFor(captures, accountId);
-	if (!detectedAccountId) {
+	if (!detectedAccountId && captures.length > 0) {
 		throw new Error(
 			"Could not detect your Funbridge ID. Enter your numeric ID in the input field and try again."
 		);

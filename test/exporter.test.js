@@ -190,3 +190,26 @@ test("keeps exporting when the Series or Daily history list is unavailable", asy
 		}
 	]);
 });
+
+test("says how many history rows were found when nothing can be exported", async () => {
+	const post = (endpoint) => {
+		if (endpoint === ENDPOINTS.bpHistory) {
+			return { data: { listHistoric: [], totalSize: 0 } };
+		}
+		throw new Error(
+			"tournament/getTournamentArchives: response is not JSON (HTTP 404)."
+		);
+	};
+	await assert.rejects(
+		() => exportAllHistory({ post, templates: {} }),
+		(error) => {
+			assert.match(error.message, /BP Circuit 0, Series 0, Daily 0/);
+			assert.match(error.message, /DAILY history could not be read/);
+			assert.match(
+				error.message,
+				/BP Circuit response shape: \{data:\{listHistoric:\[0\],totalSize:number\}\}/
+			);
+			return true;
+		}
+	);
+});
