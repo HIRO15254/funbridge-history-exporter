@@ -2,6 +2,11 @@ const elements = {
 	accountId: document.querySelector("#account-id"),
 	connect: document.querySelector("#connect"),
 	disconnect: document.querySelector("#disconnect"),
+	driveClientId: document.querySelector("#drive-client-id"),
+	driveSettings: document.querySelector("#drive-settings"),
+	redirectUri: document.querySelector("#redirect-uri"),
+	reexportAll: document.querySelector("#reexport-all"),
+	toDrive: document.querySelector("#to-drive"),
 	export: document.querySelector("#export"),
 	progress: document.querySelector("#progress"),
 	statusDetail: document.querySelector("#status-detail"),
@@ -31,6 +36,9 @@ function render(state) {
 	elements.disconnect.disabled = !connected || busy;
 	elements.export.disabled = !ready || busy;
 	elements.accountId.disabled = busy;
+	elements.reexportAll.disabled = busy;
+	elements.toDrive.disabled = busy;
+	elements.driveClientId.disabled = busy;
 	if (busy && state.progress) {
 		elements.progress.hidden = false;
 		elements.progress.max = state.progress.total || 1;
@@ -72,7 +80,14 @@ elements.disconnect.addEventListener("click", async () => {
 
 elements.export.addEventListener("click", async () => {
 	try {
-		await send({ type: "EXPORT", accountId: elements.accountId.value.trim() });
+		await saveSettings();
+		await send({
+			type: "EXPORT",
+			accountId: elements.accountId.value.trim(),
+			driveClientId: elements.driveClientId.value.trim(),
+			reexportAll: elements.reexportAll.checked,
+			toDrive: elements.toDrive.checked
+		});
 	} catch (error) {
 		render({
 			phase: "ERROR",
@@ -81,6 +96,47 @@ elements.export.addEventListener("click", async () => {
 		});
 	}
 });
+
+// Only these two preferences are stored; the client ID is not a secret.
+const settingsKey = "settings";
+
+async function saveSettings() {
+	try {
+		await chromeApi.storage.local.set({
+			[settingsKey]: {
+				driveClientId: elements.driveClientId.value.trim(),
+				toDrive: elements.toDrive.checked
+			}
+		});
+	} catch {
+		// Settings are a convenience; the export works without them.
+	}
+}
+
+function showDriveSettings() {
+	elements.driveSettings.hidden = !elements.toDrive.checked;
+}
+
+async function loadSettings() {
+	elements.redirectUri.textContent = chromeApi.identity?.getRedirectURL() ?? "";
+	try {
+		const stored = (await chromeApi.storage.local.get(settingsKey))?.[
+			settingsKey
+		];
+		elements.driveClientId.value = stored?.driveClientId ?? "";
+		elements.toDrive.checked = stored?.toDrive === true;
+	} catch {
+		// Start with defaults.
+	}
+	showDriveSettings();
+}
+
+elements.toDrive.addEventListener("change", () => {
+	showDriveSettings();
+	saveSettings();
+});
+elements.driveClientId.addEventListener("change", saveSettings);
+loadSettings();
 
 chromeApi.runtime.onMessage.addListener((message) => {
 	if (message.type === "STATE") {

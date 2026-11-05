@@ -18,11 +18,15 @@ test("stays a Manifest V3 extension with the minimum permission set", () => {
 	assert.deepEqual([...manifest.permissions].sort(), [
 		"activeTab",
 		"debugger",
-		"downloads"
+		"downloads",
+		"identity",
+		"notifications",
+		"storage"
 	]);
 	assert.deepEqual(manifest.host_permissions, [
 		"https://*.funbridge.com/*",
-		"https://*.funbridge.net/*"
+		"https://*.funbridge.net/*",
+		"https://www.googleapis.com/*"
 	]);
 });
 
@@ -34,7 +38,10 @@ test("ships every file the manifest and the popup reference", () => {
 		"popup.css",
 		"lib/exporter.js",
 		"lib/pbn.js",
-		"lib/protocol.js"
+		"lib/protocol.js",
+		"lib/drive.js",
+		"lib/ledger.js",
+		...Object.values(manifest.icons)
 	]) {
 		assert.ok(
 			fs.existsSync(path.join(extensionDirectory, relativePath)),
@@ -45,6 +52,17 @@ test("ships every file the manifest and the popup reference", () => {
 
 test("keeps credentials out of storage and out of the console", () => {
 	const background = read("background.js");
+	const ledger = read("lib/ledger.js");
+	assert.equal(
+		/authorization|token/i.test(ledger.replace(/^\/\/.*$/gm, "")),
+		false,
+		"the export ledger must store tournament IDs only"
+	);
+	assert.equal(
+		background.includes("storage.local.set"),
+		false,
+		"the background worker writes storage only through the ledger"
+	);
 	assert.equal(
 		background.includes("chrome.storage"),
 		false,

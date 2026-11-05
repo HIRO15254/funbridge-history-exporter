@@ -25,6 +25,20 @@ See [docs/pbn-format.md](docs/pbn-format.md) for the output tags.
 4. When the status reads "Ready to export", click "Save all history".
 5. When it finishes, click "Disconnect". Closing the tab also detaches the debugger and discards the in-memory credentials.
 
+While it runs, the extension icon shows the progress (for example `12/76`), and a desktop notification tells you when the export finishes or fails, so the popup does not need to stay open.
+
+Only new tournaments are saved. The extension remembers the IDs of finished tournaments it already saved (in `chrome.storage.local`, IDs and file paths only) and does not fetch them again. Tournaments still in progress are fetched every time. Tick "Re-export everything" to forget that list and save all history again.
+
+### Saving to Google Drive
+
+Tick "Also save to Google Drive" to upload every file to a `funbridge-export` folder in My Drive as well. A file whose name is already in that folder is skipped. Google requires an OAuth client of your own, created once:
+
+1. In the [Google Cloud console](https://console.cloud.google.com/), create a project, enable the **Google Drive API**, and configure the OAuth consent screen (External, add yourself as a test user).
+2. Create an OAuth client ID of type **Web application**. Under "Authorized redirect URIs", add the URI the popup shows under the client ID field (`https://<extension-id>.chromiumapp.org/`).
+3. Paste the client ID into the popup. The first export asks you to allow access to files the extension creates (`drive.file` scope only).
+
+The Google access token is kept in memory for one export only.
+
 Your numeric Funbridge ID is detected from the responses. Enter it in the input field only if detection fails. You never need to enter or store a password, cookie, or Authorization header.
 
 ## Output
@@ -67,7 +81,10 @@ The Funbridge API is private and may change without notice. If fetching fails, o
 | `debugger` | Observe Network events of the selected Funbridge tab and run the read-only APIs inside that tab |
 | `activeTab` | Identify the Funbridge tab where you opened the extension |
 | `downloads` | Save the generated PBN files locally |
-| host permissions | Limited to `*.funbridge.com` and `*.funbridge.net` |
+| `storage` | Remember already saved tournament IDs and the Drive settings |
+| `notifications` | Tell you when an export finishes or fails |
+| `identity` | Sign in to Google for the optional Drive upload |
+| host permissions | Limited to `*.funbridge.com`, `*.funbridge.net`, and `www.googleapis.com` (Drive upload) |
 
 ## Development
 

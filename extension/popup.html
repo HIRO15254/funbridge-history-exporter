@@ -41,6 +41,31 @@
 				placeholder="e.g. 1234567"
 			>
 
+			<fieldset class="options">
+				<legend>Saving</legend>
+				<label class="check">
+					<input id="reexport-all" type="checkbox">
+					Re-export everything (ignore tournaments already saved)
+				</label>
+				<label class="check">
+					<input id="to-drive" type="checkbox">
+					Also save to Google Drive (folder "funbridge-export")
+				</label>
+				<div id="drive-settings" hidden>
+					<label for="drive-client-id">Google OAuth client ID</label>
+					<input
+						id="drive-client-id"
+						autocomplete="off"
+						spellcheck="false"
+						placeholder="1234-abc.apps.googleusercontent.com"
+					>
+					<p class="hint">
+						Authorized redirect URI for the client:
+						<code id="redirect-uri"></code>
+					</p>
+				</div>
+			</fieldset>
+
 			<div class="actions">
 				<button id="connect" type="button">Detect traffic</button>
 				<button id="export" type="button" class="primary" disabled>
@@ -52,9 +77,11 @@
 			</div>
 
 			<p class="privacy">
-				The authorization header is kept in memory only and is never written
-				to the PBN files or Chrome storage. Data is sent nowhere except
-				Funbridge and your local download folder.
+				The Funbridge and Google authorizations are kept in memory only and are
+				never written to the PBN files or Chrome storage. Chrome storage keeps
+				only the IDs of tournaments already saved and these settings. Data is
+				sent nowhere except Funbridge, your download folder and, if you turn it
+				on, your Google Drive.
 			</p>
 		</main>
 		<script type="module" src="popup.js"></script>

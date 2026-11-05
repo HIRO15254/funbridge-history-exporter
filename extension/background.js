@@ -1,4 +1,11 @@
+import { authUrl, createDriveClient, tokenFromRedirect } from "./lib/drive.js";
 import { exportAllHistory } from "./lib/exporter.js";
+import {
+	clearLedger,
+	completedKeys,
+	loadLedger,
+	saveLedger
+} from "./lib/ledger.js";
 import {
 	authorizationFrom,
 	describeObservedCall,
@@ -34,8 +41,43 @@ function publicState() {
 	return structuredClone(state);
 }
 
+function showBadge(progress, phase) {
+	const action = chromeApi.action;
+	if (!action) {
+		return;
+	}
+	let text = "";
+	let color = "#1f7a4c";
+	if (phase === "EXPORTING" && progress?.total) {
+		text = `${progress.current}/${progress.total}`;
+		if (text.length > 4) {
+			text = `${Math.floor((100 * progress.current) / progress.total)}%`;
+		}
+	} else if (phase === "ERROR") {
+		text = "!";
+		color = "#c73737";
+	}
+	action.setBadgeText({ text }).catch(() => {});
+	action.setBadgeBackgroundColor({ color }).catch(() => {});
+}
+
+function notify(title, message) {
+	chromeApi.notifications
+		?.create({
+			type: "basic",
+			iconUrl: chromeApi.runtime.getURL("icons/icon-128.png"),
+			title,
+			message: message.slice(0, 500),
+			priority: 1
+		})
+		.catch(() => {
+			// Notifications can be turned off; the badge and popup still show it.
+		});
+}
+
 function publish(patch) {
 	state = { ...state, ...patch };
+	showBadge(state.progress, state.phase);
 	chromeApi.runtime
 		.sendMessage({ state: publicState(), type: "STATE" })
 		.catch(() => {
@@ -209,7 +251,150 @@ async function downloadPbn(path, text) {
 	});
 }
 
-async function startExport(accountId) {
+async function driveClient(clientId) {
+	if (!clientId) {
+		throw new Error(
+			"Enter your Google OAuth client ID in the popup to save to Google Drive."
+		);
+	}
+	const redirectedTo = await chromeApi.identity.launchWebAuthFlow({
+		interactive: true,
+		url: authUrl(clientId, chromeApi.identity.getRedirectURL())
+	});
+	// The Drive token lives only in this export run, like the Funbridge one.
+	return createDriveClient({ token: tokenFromRedirect(redirectedTo) });
+}
+
+// A tournament counts as done only for the destinations it reached, so
+// turning Drive on later still uploads what was only downloaded before.
+function destinationsOf(entry) {
+	return entry?.destinations ?? ["downloads"];
+}
+
+function alreadySaved(ledger, destinations) {
+	return (key) =>
+		Boolean(ledger[key]) &&
+		destinations.every((destination) =>
+			destinationsOf(ledger[key]).includes(destination)
+		);
+}
+
+async function saveFiles(files, drive, ledger, destinations) {
+	const total = files.length;
+	const savedPaths = new Set();
+	let driveExisting = 0;
+	try {
+		for (const [index, file] of files.entries()) {
+			await downloadPbn(file.path, file.text);
+			if (
+				drive &&
+				(await drive.saveIfMissing(file.path, file.text)) === "exists"
+			) {
+				driveExisting++;
+			}
+			savedPaths.add(file.path);
+			publish({
+				detail: `Saved ${index + 1}/${total} files.`,
+				progress: { current: index + 1, total }
+			});
+		}
+	} finally {
+		// Remember what was saved even if a later file failed, so a retry
+		// starts where this run stopped.
+		const savedAt = new Date().toISOString();
+		for (const [key, paths] of completedKeys(files, savedPaths)) {
+			const reached = new Set([
+				...destinations,
+				...(ledger[key] ? destinationsOf(ledger[key]) : [])
+			]);
+			ledger[key] = { destinations: [...reached], paths, savedAt };
+		}
+		await saveLedger(chromeApi.storage.local, ledger);
+	}
+	return { driveExisting };
+}
+
+function completionLines(summary, driveReport) {
+	const headline = `Saved ${plural(summary.tournamentFileCount, "new tournament")} (${plural(summary.boardCount, "board")}). ${summary.alreadyExported} already saved before.`;
+	const lines = [headline];
+	if (driveReport) {
+		lines.push(driveReport);
+	}
+	if (summary.skipped.length) {
+		lines.push(
+			`Skipped ${summary.skipped.length} of ${plural(summary.indexCount, "tournament")} in the history.`
+		);
+	}
+	for (const { family, reason } of summary.unavailableFamilies) {
+		lines.push(`${family} history could not be read: ${reason}`);
+	}
+	for (const row of summary.skipped.slice(0, 3)) {
+		lines.push(`Skipped ${row.family} "${row.title}": ${row.reason}`);
+	}
+	lines.push("Disconnect to discard the credentials.");
+	return { headline, detail: lines.join("\n\n") };
+}
+
+function reportFailure(current, error) {
+	const message = error instanceof Error ? error.message : String(error);
+	const observed = [...(current.observedCalls ?? [])];
+	publish({
+		detail: observed.length
+			? `${message}\n\nFunbridge APIs seen in this tab:\n${observed.join("\n")}`
+			: message,
+		phase: "ERROR",
+		progress: undefined,
+		title: "Export failed"
+	});
+	notify("Funbridge export failed", message);
+}
+
+async function runExport(
+	current,
+	{ accountId, driveClientId, reexportAll, toDrive }
+) {
+	const storageArea = chromeApi.storage.local;
+	if (reexportAll) {
+		await clearLedger(storageArea);
+	}
+	const ledger = await loadLedger(storageArea);
+	const drive = toDrive ? await driveClient(driveClientId) : undefined;
+	const destinations = drive ? ["downloads", "drive"] : ["downloads"];
+	const result = await exportAllHistory({
+		accountId,
+		generator: generatorLabel(),
+		isAlreadyExported: alreadySaved(ledger, destinations),
+		onProgress(progress) {
+			publish({ detail: progress.detail, progress });
+		},
+		post: apiPost,
+		templates: current.templates
+	});
+	const total = result.files.length;
+	publish({
+		detail: `Saving ${plural(total, "PBN file")}${drive ? " to Downloads and Google Drive" : ""}.`,
+		progress: { current: 0, total }
+	});
+	const { driveExisting } = await saveFiles(
+		result.files,
+		drive,
+		ledger,
+		destinations
+	);
+	const driveReport = drive
+		? `Google Drive: ${total - driveExisting} uploaded, ${driveExisting} already there.`
+		: undefined;
+	const { headline, detail } = completionLines(result.summary, driveReport);
+	publish({
+		detail,
+		phase: "READY",
+		progress: undefined,
+		title: "Export complete"
+	});
+	notify("Funbridge export complete", headline);
+}
+
+async function startExport(options) {
 	const current = session;
 	if (!(current?.authorization && current.apiRoot)) {
 		throw new Error("No authenticated API has been detected yet.");
@@ -221,53 +406,9 @@ async function startExport(accountId) {
 		title: "Exporting all history"
 	});
 	try {
-		const result = await exportAllHistory({
-			accountId,
-			generator: generatorLabel(),
-			onProgress(progress) {
-				publish({ detail: progress.detail, progress });
-			},
-			post: apiPost,
-			templates: current.templates
-		});
-		publish({
-			detail: `Downloading ${plural(result.files.length, "PBN file")}.`,
-			progress: { current: 0, total: result.files.length }
-		});
-		for (const [index, file] of result.files.entries()) {
-			await downloadPbn(file.path, file.text);
-			publish({
-				detail: `Saved ${index + 1}/${result.files.length} files.`,
-				progress: { current: index + 1, total: result.files.length }
-			});
-		}
-		const unavailable = result.summary.unavailableFamilies.map(
-			({ family, reason }) => `${family} history could not be read: ${reason}`
-		);
-		publish({
-			detail: [
-				`Saved ${plural(result.summary.tournamentFileCount, "tournament")} and ${plural(result.summary.boardCount, "board")} as PBN. Skipped ${result.summary.skipped.length} of ${plural(result.summary.indexCount, "tournament")} in the history.`,
-				...unavailable,
-				...result.summary.skipped
-					.slice(0, 3)
-					.map((row) => `Skipped ${row.family} "${row.title}": ${row.reason}`),
-				"Disconnect to discard the credentials."
-			].join("\n\n"),
-			phase: "READY",
-			progress: undefined,
-			title: "Export complete"
-		});
+		await runExport(current, options);
 	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error);
-		const observed = [...(current.observedCalls ?? [])];
-		publish({
-			detail: observed.length
-				? `${message}\n\nFunbridge APIs seen in this tab:\n${observed.join("\n")}`
-				: message,
-			phase: "ERROR",
-			progress: undefined,
-			title: "Export failed"
-		});
+		reportFailure(current, error);
 	}
 }
 
@@ -285,7 +426,12 @@ chromeApi.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 			});
 			return false;
 		}
-		startExport(message.accountId).catch((error) => {
+		startExport({
+			accountId: message.accountId,
+			driveClientId: message.driveClientId,
+			reexportAll: message.reexportAll === true,
+			toDrive: message.toDrive === true
+		}).catch((error) => {
 			publish({
 				detail: error instanceof Error ? error.message : String(error),
 				phase: "ERROR",

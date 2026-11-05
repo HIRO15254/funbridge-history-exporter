@@ -138,3 +138,28 @@ button:disabled {
 		border-color: #3a4657;
 	}
 }
+
+.options {
+	margin: 12px 0 0;
+	padding: 8px 10px;
+	border: 1px solid #d8dee8;
+	border-radius: 8px;
+}
+.options legend {
+	padding: 0 4px;
+	font-size: 12px;
+	color: #536174;
+}
+.check {
+	display: flex;
+	gap: 6px;
+	align-items: flex-start;
+	margin: 4px 0;
+	font-size: 13px;
+}
+.hint {
+	margin: 4px 0 0;
+	font-size: 12px;
+	color: #536174;
+	overflow-wrap: anywhere;
+}

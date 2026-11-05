@@ -351,10 +351,57 @@ function captureOne(post, family, row, options) {
 	]);
 }
 
+export function ledgerKey(family, row) {
+	return `${family}:${sourceTournamentId(row)}`;
+}
+
+// A tournament still running can gain boards and results, so only a finished
+// one is remembered as exported and skipped on the next run.
+export function isFinished(row) {
+	return (
+		row?.finished !== false &&
+		row?.inProgress !== true &&
+		row?.liveTournament !== true
+	);
+}
+
+async function captureRow(post, family, row, options) {
+	const key = ledgerKey(family, row);
+	const complete = isFinished(row);
+	const title = row.title ?? row.name;
+	if (complete && options.isAlreadyExported?.(key)) {
+		options.progress(`Already saved: "${title}".`);
+		return { alreadyExported: true };
+	}
+	options.progress(`Fetching "${title}".`);
+	try {
+		const captures = await captureOne(post, family, row, {
+			accountId: options.accountId,
+			family,
+			progress: options.progress,
+			templates: options.templates
+		});
+		for (const capture of captures) {
+			capture.ledgerKey = key;
+			capture.complete = complete;
+		}
+		return { captures };
+	} catch (error) {
+		return {
+			skipped: {
+				family,
+				sourceTournamentId: sourceTournamentId(row),
+				title,
+				reason: error.message
+			}
+		};
+	}
+}
+
 async function captureTournaments(
 	post,
 	archives,
-	{ accountId, onProgress, templates }
+	{ accountId, onProgress, templates, isAlreadyExported }
 ) {
 	const total = Object.values(archives).reduce(
 		(sum, rows) => sum + rows.length,
@@ -362,34 +409,30 @@ async function captureTournaments(
 	);
 	const captures = [];
 	const skipped = [];
+	let alreadyExported = 0;
 	let completed = 0;
 	const progress = (detail) =>
 		onProgress?.({ current: completed, total, detail });
 	for (const [family, rows] of Object.entries(archives)) {
 		for (const row of rows) {
-			progress(`Fetching "${row.title ?? row.name}".`);
-			try {
-				captures.push(
-					...(await captureOne(post, family, row, {
-						accountId,
-						family,
-						progress,
-						templates
-					}))
-				);
-			} catch (error) {
-				skipped.push({
-					family,
-					sourceTournamentId: sourceTournamentId(row),
-					title: row.title ?? row.name,
-					reason: error.message
-				});
+			const outcome = await captureRow(post, family, row, {
+				accountId,
+				isAlreadyExported,
+				progress,
+				templates
+			});
+			if (outcome.alreadyExported) {
+				alreadyExported++;
+			} else if (outcome.skipped) {
+				skipped.push(outcome.skipped);
+			} else {
+				captures.push(...outcome.captures);
 			}
 			completed++;
 			progress(`Processed ${completed}/${total} tournaments.`);
 		}
 	}
-	return { captures, indexCount: total, skipped };
+	return { alreadyExported, captures, indexCount: total, skipped };
 }
 
 export async function exportAllHistory({
@@ -397,7 +440,8 @@ export async function exportAllHistory({
 	templates,
 	accountId,
 	generator,
-	onProgress
+	onProgress,
+	isAlreadyExported
 }) {
 	const capturedAt = new Date().toISOString();
 	const shapes = {};
@@ -406,11 +450,13 @@ export async function exportAllHistory({
 		templates,
 		shapes
 	);
-	const { captures, indexCount, skipped } = await captureTournaments(
-		post,
-		archives,
-		{ accountId, onProgress, templates }
-	);
+	const { alreadyExported, captures, indexCount, skipped } =
+		await captureTournaments(post, archives, {
+			accountId,
+			isAlreadyExported,
+			onProgress,
+			templates
+		});
 
 	if (indexCount === 0) {
 		const lines = [
@@ -443,6 +489,8 @@ export async function exportAllHistory({
 			generator ?? "Funbridge History Exporter"
 		);
 		return {
+			complete: capture.complete !== false,
+			ledgerKey: capture.ledgerKey,
 			path: pbnFileName(familyDirectories[capture.family], built),
 			text: built.text
 		};
@@ -450,6 +498,7 @@ export async function exportAllHistory({
 	return {
 		files,
 		summary: {
+			alreadyExported,
 			boardCount: captures.reduce(
 				(sum, capture) => sum + capture.boards.length,
 				0

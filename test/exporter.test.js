@@ -248,3 +248,29 @@ test("reads BP Circuit history rows keyed by tournamentId", async () => {
 	assert.equal(calls[0].body.nbMax, 50);
 	assert.equal(calls[0].body.count, undefined);
 });
+
+test("skips finished tournaments that were already saved, but not running ones", async () => {
+	const calls = [];
+	const post = (endpoint, body) => {
+		calls.push(endpoint);
+		if (endpoint === ENDPOINTS.tournamentArchives && body.categoryID === 6) {
+			return {
+				data: {
+					archives: [archive, { ...archive, id: "9002", finished: false }],
+					totalSize: 2
+				}
+			};
+		}
+		return stubApi().post(endpoint, body);
+	};
+	const result = await exportAllHistory({
+		accountId: "123456",
+		isAlreadyExported: (key) => key === "DAILY:9001" || key === "DAILY:9002",
+		post,
+		templates: {}
+	});
+	assert.equal(result.summary.alreadyExported, 1);
+	assert.equal(result.files.length, 1);
+	assert.equal(result.files[0].ledgerKey, "DAILY:9002");
+	assert.equal(result.files[0].complete, false);
+});
