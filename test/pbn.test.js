@@ -197,3 +197,24 @@ test("escapes quotes and backslashes inside tag values", () => {
 	assert.match(raw, /^\[Event "Daily \\"A\\\\B\\""\]$/m);
 	assert.equal(tags(raw).Event, 'Daily "A\\B"');
 });
+
+test("finds the ID of a BP Circuit row, which uses tournamentId and id: null", () => {
+	const bpArchive = {
+		...capture.archive,
+		categoryId: 20,
+		id: null,
+		tournamentID: undefined,
+		tournamentId: "6aa08fec218733689ded327e"
+	};
+	const bp = buildTournamentPbn(
+		"BP_CIRCUIT",
+		{ ...capture, archive: bpArchive, family: "BP_CIRCUIT" },
+		capturedAt,
+		"test 0.0.0"
+	);
+	assert.equal(tags(bp.text).FunbridgeTournamentId, "6aa08fec218733689ded327e");
+	assert.match(
+		pbnFileName("bp-circuit", bp),
+		/_6aa08fec218733689ded327e\.pbn$/
+	);
+});

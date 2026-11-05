@@ -259,13 +259,32 @@ function visitObjects(root, callback) {
 	}
 }
 
-const tournamentId = (row) =>
-	row?.sourceTournamentId ??
-	row?.tournamentID ??
-	row?.tourIDstr ??
-	row?.tournamentId ??
-	row?.id ??
-	row?.ID;
+// Funbridge names a tournament's ID differently per list: tournamentID in
+// archives, tournamentId (with id: null) in BP Circuit history, tourIDstr in
+// some results. Every module reads it through this one helper so they cannot
+// drift apart. Empty, 0 and -1 mean "no ID".
+const tournamentIdKeys = [
+	"sourceTournamentId",
+	"tournamentID",
+	"tourIDstr",
+	"tournamentId",
+	"id",
+	"ID"
+];
+const missingIds = new Set(["", "0", "-1"]);
+
+export function tournamentIdOf(row) {
+	for (const key of tournamentIdKeys) {
+		const value = row?.[key];
+		if (
+			(typeof value === "string" || typeof value === "number") &&
+			!missingIds.has(String(value))
+		) {
+			return String(value);
+		}
+	}
+	return undefined;
+}
 
 export function archivePage(payload) {
 	const candidates = [];
@@ -275,7 +294,7 @@ export function archivePage(payload) {
 				continue;
 			}
 			const score = value.reduce(
-				(total, row) => total + (tournamentId(row) === undefined ? 0 : 1),
+				(total, row) => total + (tournamentIdOf(row) === undefined ? 0 : 1),
 				0
 			);
 			if (score > 0) {

@@ -1,3 +1,5 @@
+import { tournamentIdOf } from "./protocol.js";
+
 const seatKeys = { north: "N", east: "E", south: "S", west: "W" };
 const seatOrder = ["N", "E", "S", "W"];
 const vulnerabilities = { A: "Both", E: "EW", L: "None", N: "NS" };
@@ -245,13 +247,7 @@ export function renderPbn(games, generator) {
 }
 
 function archiveId(row) {
-	return sourceId(
-		row.sourceTournamentId ??
-			row.tournamentID ??
-			row.tourIDstr ??
-			row.id ??
-			row.ID
-	);
+	return tournamentIdOf(row);
 }
 
 function archiveName(row) {

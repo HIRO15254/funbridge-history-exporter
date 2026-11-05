@@ -8,7 +8,8 @@ import {
 	findPlayerId,
 	knockoutMatch,
 	knockoutMatches,
-	resultDealTournament
+	resultDealTournament,
+	tournamentIdOf
 } from "./protocol.js";
 
 const familyDirectories = {
@@ -21,17 +22,11 @@ const delay = (milliseconds) =>
 const numericIdPattern = /^\d+$/;
 
 function sourceTournamentId(row) {
-	const value =
-		row?.sourceTournamentId ??
-		row?.tournamentID ??
-		row?.tourIDstr ??
-		row?.tournamentId ??
-		row?.id ??
-		row?.ID;
-	if (value === undefined || value === null || value === "") {
+	const value = tournamentIdOf(row);
+	if (value === undefined) {
 		throw new Error("History row has no tournament ID.");
 	}
-	return String(value);
+	return value;
 }
 
 function uniqueRows(rows) {
