@@ -1,5 +1,7 @@
 import { buildTournamentPbn, pbnFileName } from "./pbn.js";
+import { FAMILIES } from "./progress.js";
 import {
+	ApiError,
 	archivePage,
 	dealSummary,
 	ENDPOINTS,
@@ -165,9 +167,7 @@ async function standardCapture(post, archive, categoryID, options = {}) {
 		family: options.family
 	};
 	for (const [index, dealId] of playedIds.entries()) {
-		options.progress?.(
-			`"${archive.title ?? archive.name}" board ${index + 1}/${playedIds.length}`
-		);
+		options.onBoard?.(index + 1, playedIds.length);
 		const summary = await collectSummary(post, dealId, categoryID);
 		capture.accountId ??= findPlayerId(
 			summary.result?.tournament?.resultPlayer,
@@ -213,9 +213,7 @@ async function knockoutCapture(post, archive, options = {}) {
 				continue;
 			}
 			exportBoardNumber++;
-			options.progress?.(
-				`"${archive.title ?? archive.name}" round ${detail.match.roundNumber}, board ${index + 1}/${detail.dealList.length}`
-			);
+			options.onBoard?.(exportBoardNumber);
 			const summary = await collectSummary(
 				post,
 				deal.dealIDstr,
@@ -236,40 +234,59 @@ async function knockoutCapture(post, archive, options = {}) {
 	return capture;
 }
 
+async function tryKnockout(post, row, options) {
+	if (!numericIdPattern.test(sourceTournamentId(row))) {
+		return undefined;
+	}
+	try {
+		return [await knockoutCapture(post, row, options)];
+	} catch (error) {
+		if (isFatal(error)) {
+			throw error;
+		}
+		// Continue to BIC detection; the original error is reported only after
+		// every known route fails.
+		return undefined;
+	}
+}
+
+async function collectBicChildren(post, row, options, federalError) {
+	const children = await collectPages(
+		post,
+		ENDPOINTS.tournamentArchives,
+		archiveRequestBody(options.templates, 32, {
+			tournamentId: sourceTournamentId(row)
+		})
+	);
+	if (children.length === 0) {
+		throw new Error(`Results unavailable: ${federalError.message}`);
+	}
+	const captures = [];
+	for (const child of children) {
+		captures.push(
+			await standardCapture(post, child, 32, {
+				...options,
+				fetchSeed: true,
+				parentEvent: row
+			})
+		);
+	}
+	return captures;
+}
+
 async function collectBpTournament(post, row, options) {
 	try {
 		return [
 			await standardCapture(post, row, 20, { ...options, fetchSeed: true })
 		];
 	} catch (federalError) {
-		if (numericIdPattern.test(sourceTournamentId(row))) {
-			try {
-				return [await knockoutCapture(post, row, options)];
-			} catch {
-				/* Continue to BIC detection and report the original route only after all known routes fail. */
-			}
+		if (isFatal(federalError)) {
+			throw federalError;
 		}
-		const children = await collectPages(
-			post,
-			ENDPOINTS.tournamentArchives,
-			archiveRequestBody(options.templates, 32, {
-				tournamentId: sourceTournamentId(row)
-			})
+		return (
+			(await tryKnockout(post, row, options)) ??
+			(await collectBicChildren(post, row, options, federalError))
 		);
-		if (children.length === 0) {
-			throw new Error(`Results unavailable: ${federalError.message}`);
-		}
-		const captures = [];
-		for (const child of children) {
-			captures.push(
-				await standardCapture(post, child, 32, {
-					...options,
-					fetchSeed: true,
-					parentEvent: row
-				})
-			);
-		}
-		return captures;
 	}
 }
 
@@ -285,71 +302,24 @@ export function archiveRequestBody(templates, categoryID, extra = {}) {
 	return { count: 50, ...base, ...extra, offset: 0, categoryID };
 }
 
-function accountIdFor(captures, provided) {
-	if (provided && numericIdPattern.test(provided)) {
-		return provided;
-	}
-	return captures
-		.map((capture) => capture.accountId)
-		.find((value) => value && numericIdPattern.test(String(value)));
+export { FAMILIES };
+
+// Errors that stop the whole run instead of failing one tournament: nothing
+// later can succeed (or the user asked to stop) until something changes.
+const fatalCodes = new Set([
+	"AUTH_EXPIRED",
+	"CANCELLED",
+	"NO_ACCOUNT_ID",
+	"SAVE_FAILED",
+	"TAB_UNAVAILABLE"
+]);
+
+export function isFatal(error) {
+	return fatalCodes.has(error?.code);
 }
 
-async function optionalFamily(family, unavailable, load) {
-	try {
-		return await load();
-	} catch (error) {
-		// One history list failing must not throw away the others.
-		unavailable.push({
-			family,
-			reason: error instanceof Error ? error.message : String(error)
-		});
-		return [];
-	}
-}
-
-async function collectArchives(post, templates, shapes) {
-	// bridgePoints/historic pages with nbMax, not count.
-	const historyBody = {
-		nbMax: 50,
-		offset: 0,
-		...(templates[ENDPOINTS.bpHistory]?.body ?? {})
-	};
-	historyBody.offset = 0;
-	const unavailable = [];
-	const archives = {
-		BP_CIRCUIT: await collectPages(
-			post,
-			ENDPOINTS.bpHistory,
-			historyBody,
-			shapes
-		),
-		SERIES: await optionalFamily("SERIES", unavailable, () =>
-			collectPages(
-				post,
-				ENDPOINTS.tournamentArchives,
-				archiveRequestBody(templates, 8)
-			)
-		),
-		DAILY: await optionalFamily("DAILY", unavailable, () =>
-			collectPages(
-				post,
-				ENDPOINTS.tournamentArchives,
-				archiveRequestBody(templates, 6)
-			)
-		)
-	};
-	return { archives, unavailable };
-}
-
-function captureOne(post, family, row, options) {
-	if (family === "BP_CIRCUIT") {
-		return collectBpTournament(post, row, options);
-	}
-	const categoryID = family === "SERIES" ? 8 : 6;
-	return standardCapture(post, row, categoryID, options).then((capture) => [
-		capture
-	]);
-}
+const messageOf = (error) =>
+	error instanceof Error ? error.message : String(error);
 
 export function ledgerKey(family, row) {
 	return `${family}:${sourceTournamentId(row)}`;
@@ -365,148 +335,274 @@ export function isFinished(row) {
 	);
 }
 
-async function captureRow(post, family, row, options) {
-	const key = ledgerKey(family, row);
-	const complete = isFinished(row);
-	const title = row.title ?? row.name;
-	if (complete && options.isAlreadyExported?.(key)) {
-		options.progress(`Already saved: "${title}".`);
-		return { alreadyExported: true };
-	}
-	options.progress(`Fetching "${title}".`);
-	try {
-		const captures = await captureOne(post, family, row, {
-			accountId: options.accountId,
-			family,
-			progress: options.progress,
-			templates: options.templates
-		});
-		for (const capture of captures) {
-			capture.ledgerKey = key;
-			capture.complete = complete;
-		}
-		return { captures };
-	} catch (error) {
-		return {
-			skipped: {
-				family,
-				sourceTournamentId: sourceTournamentId(row),
-				title,
-				reason: error.message
-			}
+function playedAtOf(row) {
+	const value = row?.startDate ?? row?.date ?? row?.beginDate ?? row?.endDate;
+	return Number.isFinite(Number(value)) && Number(value) > 0
+		? Number(value)
+		: undefined;
+}
+
+function entryFor(family, row) {
+	return {
+		complete: isFinished(row),
+		family,
+		key: ledgerKey(family, row),
+		playedAt: playedAtOf(row),
+		row,
+		title: String(row.title ?? row.name ?? sourceTournamentId(row))
+	};
+}
+
+function listFamily(post, family, templates, shapes) {
+	if (family === "BP_CIRCUIT") {
+		// bridgePoints/historic pages with nbMax, not count.
+		const body = {
+			nbMax: 50,
+			...(templates?.[ENDPOINTS.bpHistory]?.body ?? {}),
+			offset: 0
 		};
+		return collectPages(post, ENDPOINTS.bpHistory, body, shapes);
 	}
+	return collectPages(
+		post,
+		ENDPOINTS.tournamentArchives,
+		archiveRequestBody(templates, family === "SERIES" ? 8 : 6)
+	);
 }
 
-async function captureTournaments(
-	post,
-	archives,
-	{ accountId, onProgress, templates, isAlreadyExported }
-) {
-	const total = Object.values(archives).reduce(
-		(sum, rows) => sum + rows.length,
-		0
-	);
-	const captures = [];
-	const skipped = [];
-	let alreadyExported = 0;
-	let completed = 0;
-	const progress = (detail) =>
-		onProgress?.({ current: completed, total, detail });
-	for (const [family, rows] of Object.entries(archives)) {
-		for (const row of rows) {
-			const outcome = await captureRow(post, family, row, {
-				accountId,
-				isAlreadyExported,
-				progress,
-				templates
-			});
-			if (outcome.alreadyExported) {
-				alreadyExported++;
-			} else if (outcome.skipped) {
-				skipped.push(outcome.skipped);
-			} else {
-				captures.push(...outcome.captures);
+// Reads the three history lists. One list failing must not throw away the
+// others, unless the failure means no request can succeed.
+export async function listHistory({ post, templates, onEvent }) {
+	const shapes = {};
+	const entries = [];
+	const unavailable = [];
+	for (const family of FAMILIES) {
+		onEvent?.({ type: "listing", family });
+		try {
+			const rows = await listFamily(post, family, templates, shapes);
+			entries.push(...rows.map((row) => entryFor(family, row)));
+			onEvent?.({ type: "listed", family, count: rows.length });
+		} catch (error) {
+			if (isFatal(error)) {
+				throw error;
 			}
-			completed++;
-			progress(`Processed ${completed}/${total} tournaments.`);
+			unavailable.push({ family, reason: messageOf(error) });
+			onEvent?.({ type: "list-failed", family, reason: messageOf(error) });
 		}
 	}
-	return { alreadyExported, captures, indexCount: total, skipped };
+	return { entries, shapes, unavailable };
 }
 
-export async function exportAllHistory({
-	post,
-	templates,
-	accountId,
-	generator,
-	onProgress,
-	isAlreadyExported
-}) {
-	const capturedAt = new Date().toISOString();
-	const shapes = {};
-	const { archives, unavailable } = await collectArchives(
-		post,
-		templates,
-		shapes
-	);
-	const { alreadyExported, captures, indexCount, skipped } =
-		await captureTournaments(post, archives, {
-			accountId,
-			isAlreadyExported,
-			onProgress,
-			templates
-		});
+function noHistoryError(unavailable, shapes) {
+	const lines = [
+		"No tournament was found in your Funbridge history.",
+		...unavailable.map(
+			({ family, reason }) => `${family} history could not be read: ${reason}`
+		),
+		...(shapes[ENDPOINTS.bpHistory]
+			? [`BP Circuit response shape: ${shapes[ENDPOINTS.bpHistory]}`]
+			: [])
+	];
+	return new ApiError(lines.join("\n"), { code: "NO_HISTORY" });
+}
 
-	if (indexCount === 0) {
-		const lines = [
-			`No tournament could be exported. History rows found: BP Circuit ${archives.BP_CIRCUIT.length}, Series ${archives.SERIES.length}, Daily ${archives.DAILY.length}.`,
-			...unavailable.map(
-				({ family, reason }) => `${family} history could not be read: ${reason}`
-			),
-			...(archives.BP_CIRCUIT.length === 0 && shapes[ENDPOINTS.bpHistory]
-				? [`BP Circuit response shape: ${shapes[ENDPOINTS.bpHistory]}`]
-				: [])
-		];
-		throw new Error(lines.join("\n"));
+function captureOne(post, family, row, options) {
+	if (family === "BP_CIRCUIT") {
+		return collectBpTournament(post, row, options);
+	}
+	const categoryID = family === "SERIES" ? 8 : 6;
+	return standardCapture(post, row, categoryID, options).then((capture) => [
+		capture
+	]);
+}
+
+const validId = (value) =>
+	value !== undefined && value !== null && numericIdPattern.test(String(value))
+		? String(value)
+		: undefined;
+
+function countByFamily(entries) {
+	const counts = Object.fromEntries(FAMILIES.map((family) => [family, 0]));
+	for (const entry of entries) {
+		counts[entry.family]++;
+	}
+	return counts;
+}
+
+// The player's own Funbridge ID decides which seat is "you" in the PBN. A
+// configured ID wins; otherwise each tournament's results name it, and the
+// last one seen covers tournaments whose results do not.
+class AccountResolver {
+	constructor({ accountId, knownAccountId, emit }) {
+		this.configured = validId(accountId);
+		this.known = validId(knownAccountId);
+		this.emit = emit;
 	}
 
-	const detectedAccountId = accountIdFor(captures, accountId);
-	if (!detectedAccountId && captures.length > 0) {
-		throw new Error(
-			"Could not detect your Funbridge ID. Enter your numeric ID in the input field and try again."
-		);
+	resolve(captures) {
+		if (this.configured) {
+			return this.configured;
+		}
+		const detected = captures
+			.map((capture) => validId(capture.accountId))
+			.find(Boolean);
+		if (detected && detected !== this.known) {
+			this.known = detected;
+			this.emit({ type: "account", accountId: detected });
+		}
+		if (!this.known) {
+			throw new ApiError(
+				"Your Funbridge ID could not be detected. Enter it in the extension settings, then export again.",
+				{ code: "NO_ACCOUNT_ID" }
+			);
+		}
+		return this.known;
 	}
-	for (const capture of captures) {
-		capture.accountId = detectedAccountId;
-	}
+}
 
-	const files = captures.map((capture) => {
+function buildFiles(entry, captures, accountId, { capturedAt, generator }) {
+	return captures.map((capture) => {
+		capture.accountId = accountId;
 		const built = buildTournamentPbn(
-			capture.family,
+			entry.family,
 			capture,
 			capturedAt,
 			generator ?? "Funbridge History Exporter"
 		);
 		return {
-			complete: capture.complete !== false,
-			ledgerKey: capture.ledgerKey,
-			path: pbnFileName(familyDirectories[capture.family], built),
+			boards: capture.boards.length,
+			path: pbnFileName(familyDirectories[entry.family], built),
 			text: built.text
 		};
 	});
-	return {
-		files,
-		summary: {
-			alreadyExported,
-			boardCount: captures.reduce(
-				(sum, capture) => sum + capture.boards.length,
-				0
-			),
-			indexCount,
-			skipped,
-			unavailableFamilies: unavailable,
-			tournamentFileCount: captures.length
+}
+
+async function saveOrStop(saveTournament, tournament) {
+	try {
+		return (await saveTournament(tournament)) ?? {};
+	} catch (error) {
+		if (isFatal(error)) {
+			throw error;
 		}
+		throw new ApiError(`Could not save the PBN file: ${messageOf(error)}`, {
+			code: "SAVE_FAILED"
+		});
+	}
+}
+
+async function exportEntry(entry, context) {
+	const { emit, post, templates } = context;
+	const captures = await captureOne(post, entry.family, entry.row, {
+		family: entry.family,
+		onBoard: (board, boards) => emit({ type: "board", board, boards }),
+		templates
+	});
+	const accountId = context.accounts.resolve(captures);
+	const files = buildFiles(entry, captures, accountId, context);
+	const saved = await saveOrStop(context.saveTournament, {
+		complete: entry.complete,
+		family: entry.family,
+		files,
+		key: entry.key
+	});
+	return {
+		boards: files.reduce((sum, file) => sum + file.boards, 0),
+		drive: saved.drive,
+		files: files.length
 	};
+}
+
+const cancelled = () =>
+	new ApiError("The export was cancelled.", { code: "CANCELLED" });
+
+async function exportEntries(todo, context) {
+	const { emit, shouldStop } = context;
+	const outcome = { failed: 0, saved: 0 };
+	for (const [index, entry] of todo.entries()) {
+		if (shouldStop?.()) {
+			throw cancelled();
+		}
+		const about = {
+			family: entry.family,
+			key: entry.key,
+			playedAt: entry.playedAt,
+			title: entry.title
+		};
+		emit({ type: "tournament-start", index, ...about });
+		try {
+			const result = await exportEntry(entry, context);
+			outcome.saved++;
+			emit({ type: "tournament-saved", ...about, ...result });
+		} catch (error) {
+			if (isFatal(error)) {
+				throw error;
+			}
+			outcome.failed++;
+			emit({ type: "tournament-failed", ...about, reason: messageOf(error) });
+		}
+	}
+	return outcome;
+}
+
+// One export run: list the history, skip what was saved before, then fetch
+// and save one tournament at a time so progress is real and an interrupted
+// run keeps everything it already saved. Every step is reported through
+// onEvent; a fatal error (sign-in lost, tab closed, save failed) is thrown.
+export async function runExport({
+	post,
+	templates = {},
+	accountId,
+	knownAccountId,
+	generator,
+	isAlreadyExported,
+	saveTournament,
+	onEvent,
+	shouldStop,
+	now = Date.now
+}) {
+	const emit = (event) => onEvent?.(event);
+	const guardedPost = (endpoint, body) => {
+		if (shouldStop?.()) {
+			throw cancelled();
+		}
+		return post(endpoint, body);
+	};
+	try {
+		const { entries, shapes, unavailable } = await listHistory({
+			onEvent: emit,
+			post: guardedPost,
+			templates
+		});
+		if (entries.length === 0) {
+			throw noHistoryError(unavailable, shapes);
+		}
+		const already = entries.filter(
+			(entry) => entry.complete && isAlreadyExported?.(entry.key)
+		);
+		const todo = entries.filter((entry) => !already.includes(entry));
+		emit({
+			type: "plan",
+			already: countByFamily(already),
+			found: countByFamily(entries),
+			toFetch: todo.length
+		});
+		const outcome = await exportEntries(todo, {
+			accounts: new AccountResolver({ accountId, emit, knownAccountId }),
+			capturedAt: new Date(now()).toISOString(),
+			emit,
+			generator,
+			post: guardedPost,
+			saveTournament,
+			shouldStop,
+			templates
+		});
+		emit({ type: "done" });
+		return { already: already.length, found: entries.length, ...outcome };
+	} catch (error) {
+		if (error?.code === "CANCELLED") {
+			emit({ type: "cancelled" });
+			return { cancelled: true };
+		}
+		throw error;
+	}
 }

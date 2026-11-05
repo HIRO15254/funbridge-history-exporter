@@ -4,85 +4,52 @@
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1">
 		<title>Funbridge History Exporter</title>
+		<link rel="stylesheet" href="ui/base.css">
 		<link rel="stylesheet" href="popup.css">
 	</head>
 	<body>
-		<main>
-			<h1>Export Funbridge history as PBN</h1>
-			<p class="lead">
-				Connects to your signed-in Funbridge tab and saves your BP Circuit,
-				Series, and Daily history as PBN 2.1 files.
-			</p>
+		<header>
+			<div class="brand">
+				<img src="icons/icon-48.png" alt="">
+				<h1 data-i18n="extShortName">Funbridge Exporter</h1>
+			</div>
+			<button id="settings" type="button" class="quiet icon" data-i18n-label="settings">
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+			</button>
+		</header>
 
-			<section class="status-card" aria-live="polite">
+		<main>
+			<section id="connection" class="card panel" aria-live="polite">
 				<div class="status-line">
-					<span id="status-dot" class="dot idle"></span>
-					<strong id="status-title">Not connected</strong>
+					<span id="connection-dot" class="dot"></span>
+					<strong id="connection-title" data-i18n="checking">Checking…</strong>
 				</div>
-				<p id="status-detail">
-					Open a Funbridge tab and click "Detect traffic".
-				</p>
-				<progress id="progress" value="0" max="1" hidden></progress>
+				<p id="connection-detail" class="muted small"></p>
+				<button id="main-action" type="button" class="primary wide" disabled></button>
+				<p id="destinations" class="muted small center"></p>
 			</section>
 
-			<ol class="steps">
-				<li>In a tab signed in to Funbridge Web, click "Detect traffic"</li>
-				<li>
-					In Funbridge, open your history or a board to trigger an API request
-				</li>
-				<li>Click "Save all history" once it is enabled</li>
-			</ol>
-
-			<label for="account-id">Funbridge ID (only if it cannot be detected)</label>
-			<input
-				id="account-id"
-				inputmode="numeric"
-				autocomplete="off"
-				placeholder="e.g. 1234567"
-			>
-
-			<fieldset class="options">
-				<legend>Saving</legend>
-				<label class="check">
-					<input id="reexport-all" type="checkbox">
-					Re-export everything (ignore tournaments already saved)
-				</label>
-				<label class="check">
-					<input id="to-drive" type="checkbox">
-					Also save to Google Drive (folder "funbridge-export")
-				</label>
-				<div id="drive-settings" hidden>
-					<label for="drive-client-id">Google OAuth client ID</label>
-					<input
-						id="drive-client-id"
-						autocomplete="off"
-						spellcheck="false"
-						placeholder="1234-abc.apps.googleusercontent.com"
-					>
-					<p class="hint">
-						Authorized redirect URI for the client:
-						<code id="redirect-uri"></code>
-					</p>
+			<section id="running" class="card panel" aria-live="polite" hidden>
+				<div class="status-line">
+					<span id="running-dot" class="dot busy"></span>
+					<strong id="running-title"></strong>
+					<span id="running-count" class="count"></span>
 				</div>
-			</fieldset>
+				<div id="running-bar" class="bar"><span></span></div>
+				<p id="running-detail" class="muted small ellipsis"></p>
+				<div class="row">
+					<button id="show-progress" type="button" class="primary grow" data-i18n="showProgress">Show progress</button>
+					<button id="cancel" type="button" data-i18n="cancel">Cancel</button>
+				</div>
+			</section>
 
-			<div class="actions">
-				<button id="connect" type="button">Detect traffic</button>
-				<button id="export" type="button" class="primary" disabled>
-					Save all history
-				</button>
-				<button id="disconnect" type="button" class="secondary" disabled>
-					Disconnect
-				</button>
-			</div>
-
-			<p class="privacy">
-				The Funbridge and Google authorizations are kept in memory only and are
-				never written to the PBN files or Chrome storage. Chrome storage keeps
-				only the IDs of tournaments already saved and these settings. Data is
-				sent nowhere except Funbridge, your download folder and, if you turn it
-				on, your Google Drive.
-			</p>
+			<section id="last-run" class="last-run" hidden>
+				<div>
+					<span class="muted small" data-i18n="lastExport">Last export</span>
+					<p id="last-run-text" class="small"></p>
+				</div>
+				<button id="last-run-details" type="button" class="quiet small" data-i18n="details">Details</button>
+			</section>
 		</main>
 		<script type="module" src="popup.js"></script>
 	</body>

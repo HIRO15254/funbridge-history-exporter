@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
 	clearLedger,
-	completedKeys,
+	isSavedTo,
+	ledgerSize,
 	loadLedger,
+	recordSaved,
 	saveLedger
 } from "../extension/lib/ledger.js";
 
@@ -36,21 +38,28 @@ test("round-trips the ledger and starts empty when storage fails", async () => {
 	);
 });
 
-test("records a tournament only when every file of it was saved and it is finished", () => {
-	const files = [
-		{ ledgerKey: "BP_CIRCUIT:9", complete: true, path: "bic-a.pbn" },
-		{ ledgerKey: "BP_CIRCUIT:9", complete: true, path: "bic-b.pbn" },
-		{ ledgerKey: "DAILY:1", complete: true, path: "d1.pbn" },
-		{ ledgerKey: "DAILY:2", complete: false, path: "d2.pbn" }
-	];
-	assert.deepEqual(
-		completedKeys(files, new Set(["bic-a.pbn", "d1.pbn", "d2.pbn"])),
-		[["DAILY:1", ["d1.pbn"]]]
-	);
-	assert.deepEqual(
-		completedKeys(files, new Set(["bic-a.pbn", "bic-b.pbn"])).map(
-			([key]) => key
-		),
-		["BP_CIRCUIT:9"]
-	);
+test("counts a tournament as saved only for the destinations it reached", async () => {
+	const ledger = {};
+	recordSaved(ledger, "DAILY:1", {
+		destinations: ["downloads"],
+		paths: ["d1.pbn"],
+		savedAt: "2026-11-05T00:00:00.000Z"
+	});
+	ledger["DAILY:0"] = { paths: ["old.pbn"] };
+	assert.equal(isSavedTo(ledger, ["downloads"])("DAILY:1"), true);
+	assert.equal(isSavedTo(ledger, ["downloads"])("DAILY:0"), true);
+	assert.equal(isSavedTo(ledger, ["downloads", "drive"])("DAILY:1"), false);
+	assert.equal(isSavedTo(ledger, ["downloads"])("DAILY:2"), false);
+
+	recordSaved(ledger, "DAILY:1", {
+		destinations: ["drive"],
+		paths: ["d1.pbn"],
+		savedAt: "2026-11-05T01:00:00.000Z"
+	});
+	assert.deepEqual(ledger["DAILY:1"].destinations, ["downloads", "drive"]);
+	assert.equal(isSavedTo(ledger, ["downloads", "drive"])("DAILY:1"), true);
+
+	const area = memoryArea();
+	await saveLedger(area, ledger);
+	assert.equal(await ledgerSize(area), 2);
 });

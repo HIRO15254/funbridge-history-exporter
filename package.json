@@ -1,6 +1,6 @@
 {
 	"name": "funbridge-history-exporter",
-	"version": "2.0.0",
+	"version": "3.0.0",
 	"private": true,
 	"type": "module",
 	"description": "Chrome extension that exports BP Circuit, Series, and Daily history from an authenticated Funbridge Web tab as PBN 2.1 files",

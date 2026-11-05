@@ -5,8 +5,8 @@ English | [日本語](README.ja.md)
 A Chrome extension (Manifest V3) that fetches your BP Circuit, Series, and Daily history from an authenticated Funbridge Web tab and saves it locally as **PBN 2.1** files.
 
 - Records the deal, auction, actual card play, contract, tricks taken, your board result, and the distribution of all contracts.
-- Has no server. Data is sent nowhere except Funbridge and your browser's download folder.
-- The authorization header is kept only in the service worker's memory and is never written to `chrome.storage`, output files, or the console.
+- Has no server. Data is sent nowhere except Funbridge, your browser's download folder and, if you turn it on, your Google Drive.
+- Your Funbridge sign-in is held only in Chrome's memory (`chrome.storage.session`, never on disk) and is forgotten when Chrome closes. It is never written to `chrome.storage.local`, output files, or the console.
 
 See [docs/pbn-format.md](docs/pbn-format.md) for the output tags.
 
@@ -19,27 +19,35 @@ See [docs/pbn-format.md](docs/pbn-format.md) for the output tags.
 
 ## Usage
 
-1. Log in to Funbridge Web and open the extension while that tab is active.
-2. Click "Detect traffic". Chrome showing that a debugger is attached is expected.
-3. In the same tab, open your history or a tournament result once. The extension detects the allowed API URL and the Authorization header. Opening your Daily and Series tournament history pages too lets the extension reuse the exact request Funbridge sends for those lists.
-4. When the status reads "Ready to export", click "Save all history".
-5. When it finishes, click "Disconnect". Closing the tab also detaches the debugger and discards the in-memory credentials.
+1. Open [Funbridge](https://play.funbridge.com/) and sign in. The extension picks up the sign-in by itself from the page's own requests; there is nothing to connect.
+2. Click the extension icon, then **Export new tournaments**.
+   - If Funbridge was already open before the extension was installed or reloaded, the button reads **Reload Funbridge and export**: it reloads that tab once so the sign-in can be seen, then starts.
+   - If no Funbridge tab is open, the button opens one.
+3. A progress page opens. It shows the step (sign-in, reading history, saving), how many tournaments are done and roughly how long is left, the tournament and board being fetched, a table by type (BP Circuit, Series, Daily), and an activity log with a **Problems** filter for anything that could not be fetched. You can close it; the icon badge (for example `12/76`) and a notification at the end keep you informed, and the popup reopens it.
 
-While it runs, the extension icon shows the progress (for example `12/76`), and a desktop notification tells you when the export finishes or fails, so the popup does not need to stay open.
+Each tournament is saved as soon as it is fetched, so an export that stops part way keeps what it saved. The extension remembers finished tournaments it saved (IDs and file paths only, in `chrome.storage.local`) and skips them next time; tournaments still in progress are fetched every time. Tournaments that could not be fetched are tried again on the next export.
 
-Only new tournaments are saved. The extension remembers the IDs of finished tournaments it already saved (in `chrome.storage.local`, IDs and file paths only) and does not fetch them again. Tournaments still in progress are fetched every time. Tick "Re-export everything" to forget that list and save all history again.
+Funbridge allows one signed-in web session at a time. If the sign-in expires or Funbridge is opened on another device during an export, the export pauses and asks you to reload the Funbridge tab, then continues by itself. It never signs in on your behalf.
+
+### Settings
+
+The gear in the popup opens the settings page:
+
+- **Also save to Google Drive** (see below).
+- **Saved tournaments**: how many are recorded, and **Forget saved tournaments** to save your whole history again next time.
+- **Advanced → Your Funbridge ID**: detected automatically from the results; enter it only if detection fails (the progress page also asks for it if needed).
 
 ### Saving to Google Drive
 
-Tick "Also save to Google Drive" to upload every file to a `funbridge-export` folder in My Drive as well. A file whose name is already in that folder is skipped. Google requires an OAuth client of your own, created once:
+Turn on "Also save to Google Drive" in the settings to upload every file to a `funbridge-export` folder in My Drive as well. A file whose name is already in that folder is kept (a tournament that was still running last time is updated). Google requires an OAuth client of your own, created once:
 
 1. In the [Google Cloud console](https://console.cloud.google.com/), create a project, enable the **Google Drive API**, and configure the OAuth consent screen (External, add yourself as a test user).
-2. Create an OAuth client ID of type **Web application**. Under "Authorized redirect URIs", add the URI the popup shows under the client ID field (`https://<extension-id>.chromiumapp.org/`).
-3. Paste the client ID into the popup. The first export asks you to allow access to files the extension creates (`drive.file` scope only).
+2. Create an OAuth client ID of type **Web application**. Under "Authorized redirect URIs", add the URI the settings page shows (`https://<extension-id>.chromiumapp.org/`; there is a Copy button).
+3. Paste the client ID into the settings page and click **Connect Google Drive** to allow access to files the extension creates (`drive.file` scope only).
 
-The Google access token is kept in memory for one export only.
+After the first approval, later exports sign in to Google without a window. The Google access token is kept in memory only.
 
-Your numeric Funbridge ID is detected from the responses. Enter it in the input field only if detection fails. You never need to enter or store a password, cookie, or Authorization header.
+You never need to enter or store a password, cookie, or Authorization header.
 
 ## Output
 
@@ -54,11 +62,11 @@ funbridge-export/
 
 Each board is one PBN game. Besides the mandatory PBN 2.1 tags, Funbridge-specific data goes into supplemental tags prefixed with `Funbridge`, including fields that appear only in the history list, such as the registered player count, Bridge Points awarded, and the Series period.
 
-Tournaments whose result API does not respond are skipped rather than synthesized; the completion message shows how many were skipped.
+Tournaments whose result API does not respond are not synthesized; the progress page lists them under **Problems** with the reason.
 
 ## How it works
 
-The extension uses `Network` events from the Chrome DevTools Protocol to observe one real request triggered by your own action. With the API route and Authorization header from that request, it calls only the allowed read-only APIs, **from the JavaScript context of the same tab**.
+The extension watches the Funbridge page's own API requests with `chrome.webRequest` (read-only, no blocking) and keeps the API route and Authorization header of the signed-in tab. It then calls only the allowed read-only APIs **from the JavaScript context of that same tab** (`chrome.scripting`), so requests carry the page's own origin and cookies. No debugger is attached.
 
 Only these seven endpoints under `/funbridge-server-ws/rest/` are allowed, and the host and path are also checked at runtime.
 
@@ -78,11 +86,12 @@ The Funbridge API is private and may change without notice. If fetching fails, o
 
 | Permission | Purpose |
 | --- | --- |
-| `debugger` | Observe Network events of the selected Funbridge tab and run the read-only APIs inside that tab |
-| `activeTab` | Identify the Funbridge tab where you opened the extension |
+| `webRequest` | Read the Funbridge page's own API requests to pick up the sign-in (Funbridge API hosts only) |
+| `scripting` | Run the read-only API calls inside the signed-in Funbridge tab |
 | `downloads` | Save the generated PBN files locally |
-| `storage` | Remember already saved tournament IDs and the Drive settings |
-| `notifications` | Tell you when an export finishes or fails |
+| `downloads.ui` | Hide Chrome's download bubble while an export saves many files, and restore it afterwards |
+| `storage` | Remember saved tournament IDs and settings (on disk), and the sign-in and progress in memory only |
+| `notifications` | Tell you when an export finishes, fails, or needs a Funbridge reload |
 | `identity` | Sign in to Google for the optional Drive upload |
 | host permissions | Limited to `*.funbridge.com`, `*.funbridge.net`, and `www.googleapis.com` (Drive upload) |
 

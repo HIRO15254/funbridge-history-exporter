@@ -1,153 +1,164 @@
-const elements = {
-	accountId: document.querySelector("#account-id"),
-	connect: document.querySelector("#connect"),
-	disconnect: document.querySelector("#disconnect"),
-	driveClientId: document.querySelector("#drive-client-id"),
-	driveSettings: document.querySelector("#drive-settings"),
-	redirectUri: document.querySelector("#redirect-uri"),
-	reexportAll: document.querySelector("#reexport-all"),
-	toDrive: document.querySelector("#to-drive"),
-	export: document.querySelector("#export"),
-	progress: document.querySelector("#progress"),
-	statusDetail: document.querySelector("#status-detail"),
-	statusDot: document.querySelector("#status-dot"),
-	statusTitle: document.querySelector("#status-title")
-};
+import { fractionDone, isActive } from "./lib/progress.js";
+import { destinationsFor, loadLastRun, loadSettings } from "./lib/settings.js";
+import {
+	exportAction,
+	failureHint,
+	formatAgo,
+	localize,
+	send,
+	t,
+	watchRun
+} from "./ui/common.js";
+import {
+	countLine,
+	currentLine,
+	statusTitle,
+	summaryLine
+} from "./ui/run-text.js";
+
 const chromeApi = globalThis.chrome;
+const $ = (selector) => document.querySelector(selector);
+const view = {
+	connection: undefined,
+	run: undefined
+};
 
-function statusClass(state, busy, ready) {
-	if (state.phase === "ERROR") {
-		return "error";
+function renderConnection() {
+	const { connection } = view;
+	const states = {
+		"no-sign-in": {
+			detail: t("noSignInDetail"),
+			dot: "warn",
+			title: t("noSignInTitle")
+		},
+		"no-tab": { detail: t("noTabDetail"), dot: "", title: t("noTabTitle") },
+		ready: {
+			detail: connection?.title || t("readyDetail"),
+			dot: "ready",
+			title: t("readyTitle")
+		}
+	};
+	const state = states[connection?.state];
+	if (!state) {
+		return;
 	}
-	if (busy) {
-		return "busy";
-	}
-	return ready ? "ready" : "idle";
+	$("#connection-dot").className = `dot ${state.dot}`;
+	$("#connection-title").textContent = state.title;
+	$("#connection-detail").textContent = state.detail;
+	const action = exportAction(connection);
+	const button = $("#main-action");
+	button.textContent = action.label;
+	button.dataset.action = action.type;
+	button.disabled = false;
 }
 
-function render(state) {
-	const connected = state.connected === true;
-	const busy = state.phase === "EXPORTING";
-	const ready = connected && state.authObserved;
-	elements.statusTitle.textContent = state.title;
-	elements.statusDetail.textContent = state.detail;
-	elements.statusDot.className = `dot ${statusClass(state, busy, ready)}`;
-	elements.connect.disabled = connected;
-	elements.disconnect.disabled = !connected || busy;
-	elements.export.disabled = !ready || busy;
-	elements.accountId.disabled = busy;
-	elements.reexportAll.disabled = busy;
-	elements.toDrive.disabled = busy;
-	elements.driveClientId.disabled = busy;
-	if (busy && state.progress) {
-		elements.progress.hidden = false;
-		elements.progress.max = state.progress.total || 1;
-		elements.progress.value = state.progress.current || 0;
-	} else {
-		elements.progress.hidden = true;
+function renderRunning() {
+	const { run } = view;
+	const active = isActive(run);
+	$("#running").hidden = !active;
+	$("#connection").hidden = active;
+	if (!active) {
+		return;
 	}
+	const waiting = run.status === "waiting-sign-in";
+	$("#running-dot").className = `dot ${waiting ? "warn" : "busy"}`;
+	$("#running-title").textContent = statusTitle(run);
+	$("#running-count").textContent = countLine(run);
+	const bar = $("#running-bar");
+	const measurable = run.status === "saving" && run.toFetch > 0;
+	bar.classList.toggle("indeterminate", !measurable && !waiting);
+	bar.firstElementChild.style.width = measurable
+		? `${(100 * fractionDone(run)).toFixed(1)}%`
+		: "";
+	$("#running-detail").textContent = waiting
+		? t("waitingSignInShort")
+		: currentLine(run);
 }
 
-async function send(message) {
-	const response = await chromeApi.runtime.sendMessage(message);
-	if (!response?.ok) {
-		throw new Error(
-			response?.error || "Could not communicate with the extension."
-		);
+async function renderLastRun() {
+	const run = view.run;
+	const summary =
+		run && !isActive(run)
+			? {
+					...run.counts,
+					finishedAt: run.finishedAt,
+					status: run.status,
+					errorCode: run.error?.code
+				}
+			: isActive(run)
+				? undefined
+				: await loadLastRun(chromeApi.storage.local);
+	$("#last-run").hidden = !summary?.finishedAt;
+	if (!summary?.finishedAt) {
+		return;
 	}
-	render(response.state);
+	const outcome =
+		summary.status === "done"
+			? summaryLine(summary)
+			: summary.status === "cancelled"
+				? t("statusCancelled")
+				: failureHint(summary.errorCode);
+	$("#last-run-text").textContent =
+		`${outcome} — ${formatAgo(summary.finishedAt)}`;
 }
 
-elements.connect.addEventListener("click", async () => {
+async function renderDestinations() {
+	const settings = await loadSettings(chromeApi.storage.local);
+	const names = destinationsFor(settings).map((destination) =>
+		t(destination === "drive" ? "destinationDrive" : "destinationDownloads")
+	);
+	$("#destinations").textContent = t("savesTo", names.join(" + "));
+}
+
+function render() {
+	renderConnection();
+	renderRunning();
+	renderLastRun();
+}
+
+async function refreshConnection() {
 	try {
-		await send({ type: "CONNECT" });
+		view.connection = (await send("status")).connection;
 	} catch (error) {
-		render({ phase: "ERROR", title: "Cannot connect", detail: error.message });
+		$("#connection-title").textContent = t("errorNoWorker");
+		$("#connection-detail").textContent = error.message;
 	}
-});
+	render();
+}
 
-elements.disconnect.addEventListener("click", async () => {
+$("#main-action").addEventListener("click", async (event) => {
+	const button = event.currentTarget;
+	button.disabled = true;
 	try {
-		await send({ type: "DISCONNECT" });
+		await send(button.dataset.action);
+		window.close();
 	} catch (error) {
-		render({
-			phase: "ERROR",
-			title: "Cannot disconnect",
-			detail: error.message
-		});
+		$("#connection-detail").textContent = error.message;
+		button.disabled = false;
 	}
 });
-
-elements.export.addEventListener("click", async () => {
-	try {
-		await saveSettings();
-		await send({
-			type: "EXPORT",
-			accountId: elements.accountId.value.trim(),
-			driveClientId: elements.driveClientId.value.trim(),
-			reexportAll: elements.reexportAll.checked,
-			toDrive: elements.toDrive.checked
-		});
-	} catch (error) {
-		render({
-			phase: "ERROR",
-			title: "Cannot start the export",
-			detail: error.message
-		});
-	}
+$("#settings").addEventListener("click", () => {
+	chromeApi.runtime.openOptionsPage();
+	window.close();
+});
+$("#show-progress").addEventListener("click", async () => {
+	await send("open-progress").catch(() => {});
+	window.close();
+});
+$("#last-run-details").addEventListener("click", async () => {
+	await send("open-progress").catch(() => {});
+	window.close();
+});
+$("#cancel").addEventListener("click", () => {
+	send("cancel").catch(() => {});
 });
 
-// Only these two preferences are stored; the client ID is not a secret.
-const settingsKey = "settings";
-
-async function saveSettings() {
-	try {
-		await chromeApi.storage.local.set({
-			[settingsKey]: {
-				driveClientId: elements.driveClientId.value.trim(),
-				toDrive: elements.toDrive.checked
-			}
-		});
-	} catch {
-		// Settings are a convenience; the export works without them.
-	}
-}
-
-function showDriveSettings() {
-	elements.driveSettings.hidden = !elements.toDrive.checked;
-}
-
-async function loadSettings() {
-	elements.redirectUri.textContent = chromeApi.identity?.getRedirectURL() ?? "";
-	try {
-		const stored = (await chromeApi.storage.local.get(settingsKey))?.[
-			settingsKey
-		];
-		elements.driveClientId.value = stored?.driveClientId ?? "";
-		elements.toDrive.checked = stored?.toDrive === true;
-	} catch {
-		// Start with defaults.
-	}
-	showDriveSettings();
-}
-
-elements.toDrive.addEventListener("change", () => {
-	showDriveSettings();
-	saveSettings();
+localize();
+renderDestinations();
+watchRun((run) => {
+	view.run = run;
+	render();
 });
-elements.driveClientId.addEventListener("change", saveSettings);
-loadSettings();
-
-chromeApi.runtime.onMessage.addListener((message) => {
-	if (message.type === "STATE") {
-		render(message.state);
-	}
-});
-
-send({ type: "GET_STATE" }).catch((error) => {
-	render({
-		phase: "ERROR",
-		title: "Cannot load the status",
-		detail: error.message
-	});
-});
+refreshConnection();
+// The sign-in can arrive while the popup is open (e.g. after a reload).
+setInterval(refreshConnection, 2000);

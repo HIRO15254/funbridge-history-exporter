@@ -9,19 +9,22 @@ export const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
 const quote = (value) =>
 	`'${String(value).replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
 
+// No prompt=consent: after the first approval Google can answer silently,
+// which is what lets the background try a non-interactive sign-in first.
 export function authUrl(clientId, redirectUri) {
 	const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
 	url.search = new URLSearchParams({
 		client_id: clientId,
 		redirect_uri: redirectUri,
 		response_type: "token",
-		scope: DRIVE_SCOPE,
-		prompt: "consent"
+		scope: DRIVE_SCOPE
 	}).toString();
 	return url.toString();
 }
 
-export function tokenFromRedirect(redirectedTo) {
+// The token and when to stop using it (a minute early, so a long upload does
+// not start with a token about to expire).
+export function tokenFromRedirect(redirectedTo, now = Date.now()) {
 	const fragment = new URL(redirectedTo).hash.replace(/^#/, "");
 	const params = new URLSearchParams(fragment);
 	const error = params.get("error");
@@ -32,7 +35,20 @@ export function tokenFromRedirect(redirectedTo) {
 	if (!token) {
 		throw new Error("Google sign-in returned no access token.");
 	}
-	return token;
+	const lifetime = Number(params.get("expires_in") ?? 3600);
+	return { expiresAt: now + Math.max(0, lifetime - 60) * 1000, token };
+}
+
+export class DriveError extends Error {
+	constructor(message, status) {
+		super(message);
+		this.name = "DriveError";
+		this.status = status;
+	}
+}
+
+export function driveFolderUrl(folderId) {
+	return `https://drive.google.com/drive/folders/${encodeURIComponent(folderId)}`;
 }
 
 export function createDriveClient({ token, fetchImpl = fetch }) {
@@ -49,7 +65,7 @@ export function createDriveClient({ token, fetchImpl = fetch }) {
 			} catch {
 				/* keep the status */
 			}
-			throw new Error(`Google Drive: ${reason}`);
+			throw new DriveError(`Google Drive: ${reason}`, response.status);
 		}
 		return text ? JSON.parse(text) : {};
 	}
@@ -109,21 +125,13 @@ export function createDriveClient({ token, fetchImpl = fetch }) {
 		return parentId;
 	}
 
-	// Saves path ("a/b/file.pbn") unless a file of that name is already in the
-	// folder. Returns "uploaded" or "exists".
-	async function saveIfMissing(path, text, mimeType = "application/x-pbn") {
-		const parts = path.split("/").filter(Boolean);
-		const name = parts.pop();
-		const parentId = await folderFor(parts);
-		if (await findOne(name, parentId)) {
-			return "exists";
-		}
+	function multipart(metadata, text, mimeType) {
 		const boundary = `funbridge-${Math.random().toString(36).slice(2)}`;
 		const body = [
 			`--${boundary}`,
 			"Content-Type: application/json; charset=UTF-8",
 			"",
-			JSON.stringify({ name, parents: [parentId], mimeType }),
+			JSON.stringify(metadata),
 			`--${boundary}`,
 			`Content-Type: ${mimeType}; charset=UTF-8`,
 			"",
@@ -131,13 +139,47 @@ export function createDriveClient({ token, fetchImpl = fetch }) {
 			`--${boundary}--`,
 			""
 		].join("\r\n");
+		return {
+			body,
+			headers: { "Content-Type": `multipart/related; boundary=${boundary}` }
+		};
+	}
+
+	// Saves path ("a/b/file.pbn"). A file of that name already in the folder
+	// is kept as it is ("exists"), or overwritten when replace is set, for a
+	// tournament that was still running last time ("updated").
+	async function save(path, text, { replace = false } = {}) {
+		const mimeType = "application/x-pbn";
+		const parts = path.split("/").filter(Boolean);
+		const name = parts.pop();
+		const parentId = await folderFor(parts);
+		const existing = await findOne(name, parentId);
+		if (existing && !replace) {
+			return "exists";
+		}
+		if (existing) {
+			await call(
+				`${uploadRoot}/files/${encodeURIComponent(existing.id)}?uploadType=media&fields=id`,
+				{
+					method: "PATCH",
+					headers: { "Content-Type": `${mimeType}; charset=UTF-8` },
+					body: text
+				}
+			);
+			return "updated";
+		}
+		const { body, headers } = multipart(
+			{ name, parents: [parentId], mimeType },
+			text,
+			mimeType
+		);
 		await call(`${uploadRoot}/files?uploadType=multipart&fields=id`, {
 			method: "POST",
-			headers: { "Content-Type": `multipart/related; boundary=${boundary}` },
+			headers,
 			body
 		});
 		return "uploaded";
 	}
 
-	return { saveIfMissing };
+	return { folderFor, save };
 }

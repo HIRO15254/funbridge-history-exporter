@@ -92,7 +92,29 @@ export function parsePostData(value) {
 	}
 }
 
-export function runtimeFetchExpression(root, endpoint, authorization, body) {
+// The REST root of any Funbridge API URL, allowlisted or not. Every call the
+// page makes carries the same Authorization header, so any of them is enough
+// to pick up the signed-in session.
+export function apiRootFromUrl(url) {
+	try {
+		const parsed = new URL(url);
+		const markerIndex = parsed.pathname.indexOf(API_MARKER);
+		if (
+			parsed.protocol !== "https:" ||
+			!parsed.hostname.endsWith(".funbridge.net") ||
+			markerIndex < 0
+		) {
+			return undefined;
+		}
+		return `${parsed.origin}${parsed.pathname.slice(0, markerIndex + API_MARKER.length - 1)}`;
+	} catch {
+		return undefined;
+	}
+}
+
+// The URL and fetch options for one allowlisted call, run inside the
+// Funbridge tab so cookies and origin are the page's own.
+export function buildApiRequest(root, endpoint, authorization, body) {
 	if (!endpointSet.has(endpoint)) {
 		throw new Error(`Funbridge API not allowed: ${endpoint}`);
 	}
@@ -104,18 +126,33 @@ export function runtimeFetchExpression(root, endpoint, authorization, body) {
 	) {
 		throw new Error("Cannot verify the Funbridge API root.");
 	}
-	const url = new URL(endpoint, rootUrl).toString();
-	const options = {
-		method: "POST",
-		headers: {
-			Accept: "application/json",
-			Authorization: authorization,
-			"Content-Type": "application/json"
-		},
-		body: JSON.stringify(body)
+	return {
+		url: new URL(endpoint, rootUrl).toString(),
+		init: {
+			method: "POST",
+			headers: {
+				Accept: "application/json",
+				Authorization: authorization,
+				"Content-Type": "application/json"
+			},
+			body: JSON.stringify(body)
+		}
 	};
-	return `fetch(${JSON.stringify(url)},${JSON.stringify(options)}).then(async response=>({status:response.status,contentType:response.headers.get("content-type")??"",redirected:response.redirected,text:await response.text()}))`;
 }
+
+export class ApiError extends Error {
+	constructor(message, { code, detail } = {}) {
+		super(message);
+		this.name = "ApiError";
+		this.code = code;
+		this.detail = detail;
+	}
+}
+
+// Funbridge allows one web session at a time; a sign-in elsewhere ends this
+// one with CONNECT_ANOTHER_DEVICE.
+const expiredPattern =
+	/INVALID_ACCESS_TOKEN|ACCESS_TOKEN_EXPIRED|SESSION_EXPIRED|INVALID_SESSION|CONNECT_ANOTHER_DEVICE/i;
 
 const snippetLength = 160;
 
@@ -140,28 +177,66 @@ function describeNonJson(value) {
 	return parts.join(", ");
 }
 
-export function unwrapApiResult(result, endpoint) {
-	const value = result?.result?.value;
-	if (result?.exceptionDetails || !value) {
-		throw new Error(`${endpoint}: in-page fetch failed.`);
+// Worth one more try after a pause: no answer at all, rate limiting, or a
+// server error.
+function isTemporaryStatus(status) {
+	return status === 0 || status === 429 || status >= 500;
+}
+
+function failureCode(status, exception) {
+	if (
+		status === 401 ||
+		expiredPattern.test(
+			`${exception?.type ?? ""} ${exception?.message ?? ""} ${exception?.code ?? ""}`
+		)
+	) {
+		return "AUTH_EXPIRED";
+	}
+	return isTemporaryStatus(status) ? "TEMPORARY" : "API_ERROR";
+}
+
+function parseJson(value, endpoint) {
+	try {
+		return JSON.parse(value.text);
+	} catch {
+		const code =
+			value.status === 401
+				? "AUTH_EXPIRED"
+				: isTemporaryStatus(value.status)
+					? "TEMPORARY"
+					: "BAD_RESPONSE";
+		throw new ApiError(
+			`${endpoint}: response is not JSON (${describeNonJson(value)}).`,
+			{ code }
+		);
+	}
+}
+
+// value is what the in-page fetch returned: {status, contentType, redirected,
+// text}, or undefined when the script could not run.
+export function unwrapApiResult(value, endpoint) {
+	if (!value || typeof value.status !== "number") {
+		throw new ApiError(
+			`${endpoint}: the request could not run in the Funbridge tab.`,
+			{ code: "TAB_UNAVAILABLE" }
+		);
 	}
 	const ok = value.status >= 200 && value.status < 300;
 	if (ok && String(value.text ?? "").trim() === "") {
 		// Funbridge answers some empty lists with no body at all.
 		return {};
 	}
-	let json;
-	try {
-		json = JSON.parse(value.text);
-	} catch {
-		throw new Error(
-			`${endpoint}: response is not JSON (${describeNonJson(value)}).`
-		);
-	}
+	const json = parseJson(value, endpoint);
 	if (!ok || json?.exception) {
+		const exception = json?.exception;
 		const reason =
-			json?.exception?.message ?? json?.message ?? `HTTP ${value.status}`;
-		throw new Error(`${endpoint}: ${reason}`);
+			exception?.message ??
+			exception?.type ??
+			json?.message ??
+			`HTTP ${value.status}`;
+		throw new ApiError(`${endpoint}: ${reason}`, {
+			code: failureCode(value.status, exception)
+		});
 	}
 	return json;
 }

@@ -1,6 +1,6 @@
 // Remembers which finished tournaments were already saved, so the next export
-// fetches and writes only new ones. It stores family:tournamentId keys and the
-// file path, never credentials or response bodies.
+// fetches and writes only new ones. It stores family:tournamentId keys, file
+// paths and where they went, never credentials or response bodies.
 const storageKey = "exportedTournaments";
 
 export async function loadLedger(storageArea) {
@@ -21,20 +21,30 @@ export async function clearLedger(storageArea) {
 	await storageArea.remove(storageKey);
 }
 
-// Several files can come from one history row (a BIC event has one file per
-// child tournament), so a key is recorded only once every file of it is saved.
-export function completedKeys(files, savedPaths) {
-	const byKey = new Map();
-	for (const file of files) {
-		if (!(file.ledgerKey && file.complete)) {
-			continue;
-		}
-		const entry = byKey.get(file.ledgerKey) ?? { paths: [], allSaved: true };
-		entry.paths.push(file.path);
-		entry.allSaved &&= savedPaths.has(file.path);
-		byKey.set(file.ledgerKey, entry);
-	}
-	return [...byKey]
-		.filter(([, entry]) => entry.allSaved)
-		.map(([key, entry]) => [key, entry.paths]);
+export async function ledgerSize(storageArea) {
+	return Object.keys(await loadLedger(storageArea)).length;
+}
+
+// Entries written before destinations were recorded went to Downloads only.
+function destinationsOf(entry) {
+	return entry?.destinations ?? ["downloads"];
+}
+
+// A tournament counts as saved only for the destinations it reached, so
+// turning Google Drive on later still uploads what was only downloaded.
+export function isSavedTo(ledger, destinations) {
+	return (key) =>
+		Boolean(ledger[key]) &&
+		destinations.every((destination) =>
+			destinationsOf(ledger[key]).includes(destination)
+		);
+}
+
+export function recordSaved(ledger, key, { destinations, paths, savedAt }) {
+	const reached = new Set([
+		...(ledger[key] ? destinationsOf(ledger[key]) : []),
+		...destinations
+	]);
+	ledger[key] = { destinations: [...reached], paths, savedAt };
+	return ledger;
 }
