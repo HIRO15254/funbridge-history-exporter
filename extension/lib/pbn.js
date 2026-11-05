@@ -66,6 +66,9 @@ function localDate(isoString) {
 	);
 }
 
+// Funbridge result types: 1 is a percentage (MP), 2 is IMPs. Any other value
+// (eBridge Cup qualifiers send 0) says nothing about the scoring, so the
+// next source is asked instead of failing the tournament.
 function resultType(value) {
 	if (value === 1 || value === "RESULT_PERCENTAGE") {
 		return "MP";
@@ -73,11 +76,31 @@ function resultType(value) {
 	if (value === 2 || value === "RESULT_IMP") {
 		return "IMP";
 	}
-	throw new Error(`Unsupported resultType: ${value}`);
+	return undefined;
+}
+
+function scoringOf(...candidates) {
+	return candidates.map(resultType).find(Boolean);
+}
+
+// The tournament says it, or else its archive row, its parent event, or the
+// player's board rows. Nothing at all means Funbridge's default percentage,
+// as before; values that are all unknown give undefined (Scoring "?").
+function tournamentScoring(capture, archive, seedTournament) {
+	const given = [
+		seedTournament?.resultType,
+		archive.resultType,
+		capture.parentEvent?.resultType,
+		...capture.boards.flatMap((board) =>
+			summaryRows(board.summary).map((row) => row.resultType)
+		),
+		...(capture.seed?.listResultDeal ?? []).map((row) => row.resultType)
+	].filter((value) => value !== undefined && value !== null);
+	return given.length === 0 ? "MP" : scoringOf(...given);
 }
 
 function score(value, type) {
-	if (!number(value)) {
+	if (!(number(value) && type)) {
 		return undefined;
 	}
 	return type === "MP" ? value * 100 : value;
@@ -358,9 +381,7 @@ function tournamentContext(family, capture, capturedAt) {
 	if (!id) {
 		throw new Error("History row has no tournament ID.");
 	}
-	const scoreType = resultType(
-		seedTournament?.resultType ?? archive.resultType ?? 1
-	);
+	const scoreType = tournamentScoring(capture, archive, seedTournament);
 	const boardCount =
 		seedTournament?.countDeal ?? archive.countDeal ?? capture.boards.length;
 	const playedBoardCount = capture.boards.length;
@@ -399,7 +420,7 @@ function tournamentContext(family, capture, capturedAt) {
 			North: robotName,
 			East: robotName,
 			South: String(capture.accountId ?? "?"),
-			Scoring: scoreType,
+			Scoring: scoreType ?? "?",
 			FunbridgeTournamentId: id,
 			FunbridgeTournamentFamily: family,
 			FunbridgePlayerId: String(capture.accountId ?? "?"),
@@ -422,6 +443,13 @@ function tournamentContext(family, capture, capturedAt) {
 			...(registered === undefined
 				? {}
 				: { FunbridgeRegisteredPlayerCount: String(registered) }),
+			...(scoreType
+				? {}
+				: {
+						FunbridgeSourceResultType: String(
+							seedTournament?.resultType ?? archive.resultType
+						)
+					}),
 			...(family === "SERIES" && number(archive.date)
 				? { FunbridgeLastPlayedAt: iso(archive.date) }
 				: {}),
@@ -456,7 +484,8 @@ function contractGroupTags(groupSource, hero, scoreType) {
 		const parsed = contractPattern.test(row.contract ?? "")
 			? contract(row.contract)
 			: undefined;
-		const rowScore = score(row.result, scoreType);
+		// With the scoring unknown the row is still kept, its score as "?".
+		const rowScore = scoreType ? score(row.result, scoreType) : "?";
 		if (
 			!(
 				parsed &&
@@ -519,7 +548,7 @@ function comparisonTags(hero, groups, fallbackType) {
 	) {
 		return {};
 	}
-	const scoreType = resultType(hero.resultType ?? fallbackType);
+	const scoreType = scoringOf(hero.resultType) ?? fallbackType;
 	const boardScore = score(hero.result, scoreType);
 	return {
 		FunbridgeBoardParticipantCount: String(hero.nbTotalPlayer),

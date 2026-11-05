@@ -218,3 +218,61 @@ test("finds the ID of a BP Circuit row, which uses tournamentId and id: null", (
 		/_6aa08fec218733689ded327e\.pbn$/
 	);
 });
+
+// eBridge Cup qualifiers report resultType 0 on the tournament.
+function withResultTypes({ tournament: tournamentType, hero: heroType }) {
+	const retype = (row) => ({ ...row, resultType: heroType });
+	const summary = capture.boards[0].summary;
+	return {
+		...capture,
+		archive: { ...capture.archive, resultType: tournamentType },
+		boards: [
+			{
+				...capture.boards[0],
+				summary: {
+					...summary,
+					result: {
+						listResultDeal: summary.result.listResultDeal.map(retype),
+						tournament: {
+							...summary.result.tournament,
+							resultType: tournamentType
+						}
+					}
+				}
+			}
+		],
+		seed: {
+			listResultDeal: capture.seed.listResultDeal.map(retype),
+			tournament: { ...capture.seed.tournament, resultType: tournamentType }
+		}
+	};
+}
+
+test("takes the scoring from the boards when the tournament says resultType 0", () => {
+	const pbn = buildTournamentPbn(
+		"BP_CIRCUIT",
+		withResultTypes({ hero: 2, tournament: 0 }),
+		capturedAt,
+		"test 0.0.0"
+	);
+	const values = tags(pbn.text);
+	assert.equal(values.Scoring, "IMP");
+	assert.equal(values.FunbridgeSourceResultType, undefined);
+	assert.equal(values.FunbridgeBoardScore, "0.6");
+});
+
+test("writes Scoring ? instead of failing when no source names the scoring", () => {
+	const pbn = buildTournamentPbn(
+		"BP_CIRCUIT",
+		withResultTypes({ hero: 0, tournament: 0 }),
+		capturedAt,
+		"test 0.0.0"
+	);
+	const values = tags(pbn.text);
+	assert.equal(values.Scoring, "?");
+	assert.equal(values.FunbridgeSourceResultType, "0");
+	assert.equal(values.FunbridgeTournamentScore, "?");
+	assert.equal(values.FunbridgeBoardScore, undefined);
+	assert.equal(values.FunbridgeContractGroups, "1,4S,S,10,420,?,2");
+	assert.equal(values.Contract, "4S");
+});
