@@ -261,7 +261,7 @@ test("takes the scoring from the boards when the tournament says resultType 0", 
 	assert.equal(values.FunbridgeBoardScore, "0.6");
 });
 
-test("writes Scoring ? instead of failing when no source names the scoring", () => {
+test("writes Scoring ? and the raw scores when no source names MP or IMP", () => {
 	const pbn = buildTournamentPbn(
 		"BP_CIRCUIT",
 		withResultTypes({ hero: 0, tournament: 0 }),
@@ -271,8 +271,8 @@ test("writes Scoring ? instead of failing when no source names the scoring", () 
 	const values = tags(pbn.text);
 	assert.equal(values.Scoring, "?");
 	assert.equal(values.FunbridgeSourceResultType, "0");
-	assert.equal(values.FunbridgeTournamentScore, "?");
-	assert.equal(values.FunbridgeBoardScore, undefined);
-	assert.equal(values.FunbridgeContractGroups, "1,4S,S,10,420,?,2");
+	assert.equal(values.FunbridgeTournamentScore, "0.6");
+	assert.equal(values.FunbridgeBoardScore, "0.6");
+	assert.equal(values.FunbridgeContractGroups, "1,4S,S,10,420,0.6,2");
 	assert.equal(values.Contract, "4S");
 });

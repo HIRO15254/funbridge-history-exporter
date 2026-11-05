@@ -67,8 +67,9 @@ function localDate(isoString) {
 }
 
 // Funbridge result types: 1 is a percentage (MP), 2 is IMPs. Any other value
-// (eBridge Cup qualifiers send 0) says nothing about the scoring, so the
-// next source is asked instead of failing the tournament.
+// (eBridge Cup qualifiers send 0; the web app also knows "RESULT_POINTS")
+// is shown by the app as raw points, so the next source is asked, and if
+// none names MP or IMP the scores are written as sent.
 function resultType(value) {
 	if (value === 1 || value === "RESULT_PERCENTAGE") {
 		return "MP";
@@ -85,7 +86,8 @@ function scoringOf(...candidates) {
 
 // The tournament says it, or else its archive row, its parent event, or the
 // player's board rows. Nothing at all means Funbridge's default percentage,
-// as before; values that are all unknown give undefined (Scoring "?").
+// as before; values that are all unknown give undefined (Scoring "?", raw
+// scores).
 function tournamentScoring(capture, archive, seedTournament) {
 	const given = [
 		seedTournament?.resultType,
@@ -100,7 +102,7 @@ function tournamentScoring(capture, archive, seedTournament) {
 }
 
 function score(value, type) {
-	if (!(number(value) && type)) {
+	if (!number(value)) {
 		return undefined;
 	}
 	return type === "MP" ? value * 100 : value;
@@ -484,8 +486,7 @@ function contractGroupTags(groupSource, hero, scoreType) {
 		const parsed = contractPattern.test(row.contract ?? "")
 			? contract(row.contract)
 			: undefined;
-		// With the scoring unknown the row is still kept, its score as "?".
-		const rowScore = scoreType ? score(row.result, scoreType) : "?";
+		const rowScore = score(row.result, scoreType);
 		if (
 			!(
 				parsed &&

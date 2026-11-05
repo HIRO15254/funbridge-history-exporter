@@ -41,7 +41,7 @@ PBN 2.1が定める15個のタグペアを、規格の順序で必ず書き出�
 | `Dealer` | `N` / `E` / `S` / `W` |
 | `Vulnerable` | `None` / `NS` / `EW` / `Both` |
 | `Deal` | ディーラーを先頭とする時計回りの4ハンド |
-| `Scoring` | `MP` または `IMP`。Funbridge が示さない場合（例: eBridge Cup 予選の `resultType` 0 で、ボード側にも種別がないとき）は `?` とし、換算したスコアは書きません |
+| `Scoring` | `MP` または `IMP`。Funbridge が示さない場合（例: eBridge Cup 予選の `resultType` 0 で、ボード側にも種別がないとき）は `?` とし、スコアは Funbridge が送った値のまま（MP の ×100 をせず、Funbridge アプリの表示と同じ）書きます |
 | `Declarer` | ディクレアラー。パスアウトは空文字 |
 | `Contract` | `4S` / `3NTX` / `6HXX`。パスアウトは `Pass` |
 | `Result` | ディクレアラーの獲得トリック数。パスアウトは `0` |

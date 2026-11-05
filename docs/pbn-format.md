@@ -39,7 +39,7 @@ The 15 tag pairs required by PBN 2.1 are always written, in the order the standa
 | `Dealer` | `N` / `E` / `S` / `W` |
 | `Vulnerable` | `None` / `NS` / `EW` / `Both` |
 | `Deal` | The four hands clockwise, starting with the dealer |
-| `Scoring` | `MP` or `IMP`. `?` when Funbridge does not say (for example `resultType` 0 on eBridge Cup qualifiers with no typed board result); scaled scores are then left out |
+| `Scoring` | `MP` or `IMP`. `?` when Funbridge does not say (for example `resultType` 0 on eBridge Cup qualifiers with no typed board result); scores are then written as Funbridge sends them, without the ×100 of MP, as the Funbridge app shows them |
 | `Declarer` | Declarer. Empty string for a passed-out board |
 | `Contract` | `4S` / `3NTX` / `6HXX`. `Pass` for a passed-out board |
 | `Result` | Tricks taken by declarer. `0` for a passed-out board |
