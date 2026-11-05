@@ -1,19 +1,40 @@
 {
 	"manifest_version": 3,
-	"name": "Funbridge History Exporter",
-	"version": "2.0.0",
-	"description": "Exports your tournament history from a signed-in Funbridge tab and saves it locally as PBN 2.1 files.",
-	"permissions": ["activeTab", "debugger", "downloads"],
+	"name": "__MSG_extName__",
+	"short_name": "__MSG_extShortName__",
+	"version": "3.0.2",
+	"description": "__MSG_extDescription__",
+	"default_locale": "en",
+	"minimum_chrome_version": "116",
+	"permissions": [
+		"downloads",
+		"downloads.ui",
+		"identity",
+		"notifications",
+		"scripting",
+		"storage",
+		"webRequest"
+	],
 	"host_permissions": [
 		"https://*.funbridge.com/*",
-		"https://*.funbridge.net/*"
+		"https://*.funbridge.net/*",
+		"https://www.googleapis.com/*"
 	],
 	"background": {
 		"service_worker": "background.js",
 		"type": "module"
 	},
 	"action": {
-		"default_title": "Export Funbridge history as PBN",
+		"default_title": "__MSG_extName__",
 		"default_popup": "popup.html"
+	},
+	"options_ui": {
+		"page": "options.html",
+		"open_in_tab": true
+	},
+	"icons": {
+		"16": "icons/icon-16.png",
+		"48": "icons/icon-48.png",
+		"128": "icons/icon-128.png"
 	}
 }

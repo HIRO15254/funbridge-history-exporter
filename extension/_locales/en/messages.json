@@ -1,0 +1,416 @@
+{
+	"extName": {
+		"message": "Funbridge History Exporter"
+	},
+	"extShortName": {
+		"message": "Funbridge Exporter"
+	},
+	"extDescription": {
+		"message": "Saves your Funbridge tournament history as PBN files, in your Downloads folder and optionally Google Drive."
+	},
+	"badgeTitleRunning": {
+		"message": "Funbridge export: $1% done"
+	},
+	"checking": {
+		"message": "Checking…"
+	},
+	"settings": {
+		"message": "Settings"
+	},
+	"settingsTitle": {
+		"message": "Settings"
+	},
+	"readyTitle": {
+		"message": "Ready to export"
+	},
+	"readyDetail": {
+		"message": "Signed in to Funbridge."
+	},
+	"noSignInTitle": {
+		"message": "Funbridge sign-in not seen yet"
+	},
+	"noSignInDetail": {
+		"message": "The extension reads the sign-in when the Funbridge tab loads. The button below reloads that tab once, then starts the export."
+	},
+	"noTabTitle": {
+		"message": "Funbridge is not open"
+	},
+	"noTabDetail": {
+		"message": "Open Funbridge and sign in. The extension picks up the sign-in by itself."
+	},
+	"openFunbridge": {
+		"message": "Open Funbridge"
+	},
+	"reloadAndExport": {
+		"message": "Reload Funbridge and export"
+	},
+	"exportNew": {
+		"message": "Export new tournaments"
+	},
+	"exportAgain": {
+		"message": "Export again"
+	},
+	"savesTo": {
+		"message": "Saves to $1"
+	},
+	"destinationDownloads": {
+		"message": "Downloads folder"
+	},
+	"destinationDrive": {
+		"message": "Google Drive"
+	},
+	"showProgress": {
+		"message": "Show progress"
+	},
+	"cancel": {
+		"message": "Cancel"
+	},
+	"lastExport": {
+		"message": "Last export"
+	},
+	"details": {
+		"message": "Details"
+	},
+	"errorNoWorker": {
+		"message": "The extension is not responding. Reload it in chrome://extensions."
+	},
+	"statusIdle": {
+		"message": "Export progress"
+	},
+	"statusConnecting": {
+		"message": "Connecting to Funbridge"
+	},
+	"statusListing": {
+		"message": "Reading your history"
+	},
+	"statusSaving": {
+		"message": "Saving tournaments"
+	},
+	"statusWaitingSignIn": {
+		"message": "Waiting for Funbridge sign-in"
+	},
+	"statusDone": {
+		"message": "Export finished"
+	},
+	"statusFailed": {
+		"message": "Export stopped"
+	},
+	"statusCancelled": {
+		"message": "Export cancelled"
+	},
+	"statusInterrupted": {
+		"message": "Export interrupted"
+	},
+	"connectingDetail": {
+		"message": "Looking for the signed-in Funbridge tab…"
+	},
+	"readingFamily": {
+		"message": "Reading $1 history…"
+	},
+	"boardOf": {
+		"message": "board $1 of $2"
+	},
+	"boardN": {
+		"message": "board $1"
+	},
+	"startingTournament": {
+		"message": "starting"
+	},
+	"waitingSignInShort": {
+		"message": "Reload the Funbridge tab to continue."
+	},
+	"waitingSignInTitle": {
+		"message": "Funbridge signed out"
+	},
+	"waitingSignInBody": {
+		"message": "The sign-in expired, or Funbridge was opened on another device. Reload the Funbridge tab (sign in if asked) and the export continues by itself. It waits up to 10 minutes."
+	},
+	"reloadFunbridge": {
+		"message": "Reload Funbridge tab"
+	},
+	"openSettings": {
+		"message": "Open settings"
+	},
+	"openDownloads": {
+		"message": "Open Downloads folder"
+	},
+	"openDrive": {
+		"message": "Open in Google Drive"
+	},
+	"technicalDetails": {
+		"message": "Technical details"
+	},
+	"savedAreKept": {
+		"message": "Tournaments saved so far are kept; the next export continues from there."
+	},
+	"failedRetryNextTime": {
+		"message": "They are tried again on the next export. See Activity → Problems for the reasons."
+	},
+	"nothingNewTitle": {
+		"message": "No new tournaments"
+	},
+	"nothingNewBody": {
+		"message": "Every finished tournament in your history was already saved."
+	},
+	"noRunTitle": {
+		"message": "No export running"
+	},
+	"progressTitle": {
+		"message": "Export progress"
+	},
+	"startedAt": {
+		"message": "Started at $1"
+	},
+	"elapsed": {
+		"message": "Elapsed $1"
+	},
+	"remaining": {
+		"message": "about $1 left"
+	},
+	"tournamentsUnit": {
+		"message": "tournaments"
+	},
+	"stepSignIn": {
+		"message": "Sign-in"
+	},
+	"stepListing": {
+		"message": "Read history"
+	},
+	"stepSaving": {
+		"message": "Save new tournaments"
+	},
+	"stepDone": {
+		"message": "Done"
+	},
+	"tileSaved": {
+		"message": "Saved now"
+	},
+	"tileAlready": {
+		"message": "Already saved"
+	},
+	"tileFailed": {
+		"message": "Could not fetch"
+	},
+	"tileBoards": {
+		"message": "Boards saved"
+	},
+	"byType": {
+		"message": "By type"
+	},
+	"colType": {
+		"message": "Type"
+	},
+	"colFound": {
+		"message": "In history"
+	},
+	"colAlready": {
+		"message": "Already saved"
+	},
+	"colSaved": {
+		"message": "Saved now"
+	},
+	"colFailed": {
+		"message": "Could not fetch"
+	},
+	"familyPending": {
+		"message": "waiting"
+	},
+	"familyListing": {
+		"message": "reading…"
+	},
+	"familyUnavailable": {
+		"message": "could not be read"
+	},
+	"family_BP_CIRCUIT": {
+		"message": "BP Circuit"
+	},
+	"family_SERIES": {
+		"message": "Series"
+	},
+	"family_DAILY": {
+		"message": "Daily"
+	},
+	"activity": {
+		"message": "Activity"
+	},
+	"filterAll": {
+		"message": "All ($1)"
+	},
+	"filterProblems": {
+		"message": "Problems ($1)"
+	},
+	"logEmpty": {
+		"message": "Nothing yet."
+	},
+	"logNoProblems": {
+		"message": "No problems so far."
+	},
+	"logSignInLost": {
+		"message": "Funbridge signed out — waiting for the tab to sign in again"
+	},
+	"logSignInBack": {
+		"message": "Signed in again — continuing"
+	},
+	"familyListFailed": {
+		"message": "$1 history could not be read"
+	},
+	"boardsCount": {
+		"message": "$1 boards"
+	},
+	"driveUploaded": {
+		"message": "uploaded to Drive"
+	},
+	"driveExisting": {
+		"message": "already in Drive"
+	},
+	"summarySaved": {
+		"message": "$1 new"
+	},
+	"summaryAlready": {
+		"message": "$1 already saved"
+	},
+	"summaryFailed": {
+		"message": "$1 failed"
+	},
+	"notifyDoneTitle": {
+		"message": "Funbridge export finished"
+	},
+	"notifySaved": {
+		"message": "Saved $1 new tournaments ($2 were saved before)."
+	},
+	"notifyNothingNew": {
+		"message": "No new tournaments ($1 already saved)."
+	},
+	"notifyFailedSome": {
+		"message": "$1 tournaments could not be fetched."
+	},
+	"notifyFailedTitle": {
+		"message": "Funbridge export stopped"
+	},
+	"notifySignedOutTitle": {
+		"message": "Funbridge signed out"
+	},
+	"notifySignedOutBody": {
+		"message": "Reload the Funbridge tab to continue the export."
+	},
+	"hintAuthExpired": {
+		"message": "Funbridge signed out and did not sign in again."
+	},
+	"hintDriveSignIn": {
+		"message": "Could not sign in to Google Drive. Check the client ID in Settings."
+	},
+	"hintNoAccountId": {
+		"message": "Your Funbridge ID could not be detected. Enter it below (it is also in Settings → Advanced)."
+	},
+	"hintNoHistory": {
+		"message": "No tournament was found in your Funbridge history."
+	},
+	"hintNoSignIn": {
+		"message": "No Funbridge sign-in was seen. Sign in to Funbridge in that tab, then export again."
+	},
+	"hintNoTab": {
+		"message": "Open Funbridge and sign in, then export again."
+	},
+	"hintSaveFailed": {
+		"message": "A file could not be saved."
+	},
+	"hintTabUnavailable": {
+		"message": "The Funbridge tab was closed or left Funbridge."
+	},
+	"hintInterrupted": {
+		"message": "Chrome stopped the export before it finished."
+	},
+	"hintGeneric": {
+		"message": "Something went wrong."
+	},
+	"whereToSave": {
+		"message": "Where to save"
+	},
+	"downloadsHelp": {
+		"message": "Always on. Files go to Downloads/funbridge-export/, one PBN file per tournament."
+	},
+	"openFolder": {
+		"message": "Open folder"
+	},
+	"driveToggle": {
+		"message": "Also save to Google Drive"
+	},
+	"driveHelp": {
+		"message": "Uploads each file to the funbridge-export folder in My Drive. The extension can see only the files it created."
+	},
+	"clientIdLabel": {
+		"message": "Google OAuth client ID"
+	},
+	"clientIdHelp": {
+		"message": "Create a “Web application” client in Google Cloud once, and add this redirect URI to it:"
+	},
+	"copy": {
+		"message": "Copy"
+	},
+	"copied": {
+		"message": "Copied"
+	},
+	"setupGuide": {
+		"message": "Setup guide"
+	},
+	"connectDrive": {
+		"message": "Connect Google Drive"
+	},
+	"driveConnecting": {
+		"message": "Waiting for Google…"
+	},
+	"driveConnected": {
+		"message": "Connected. Exports also go to Google Drive."
+	},
+	"driveConnectFailed": {
+		"message": "Could not connect: $1"
+	},
+	"driveNeedsClientId": {
+		"message": "Enter the Google OAuth client ID first."
+	},
+	"savedTournaments": {
+		"message": "Saved tournaments"
+	},
+	"ledgerCount": {
+		"message": "$1 finished tournaments are recorded as saved."
+	},
+	"forgetSaved": {
+		"message": "Forget saved tournaments"
+	},
+	"forgetHelp": {
+		"message": "Exports skip finished tournaments that were already saved. Forget them to save your whole history again next time."
+	},
+	"forgetConfirm": {
+		"message": "Forget all saved tournaments? The next export will fetch and save your whole history again."
+	},
+	"forgotten": {
+		"message": "Forgotten"
+	},
+	"advanced": {
+		"message": "Advanced"
+	},
+	"accountIdLabel": {
+		"message": "Your Funbridge ID"
+	},
+	"accountHelp": {
+		"message": "Detected automatically during an export. Enter it only if detection fails."
+	},
+	"accountDetected": {
+		"message": "Detected automatically: $1. Enter a different ID only if this is wrong."
+	},
+	"accountInvalid": {
+		"message": "The Funbridge ID is a number."
+	},
+	"settingsSaved": {
+		"message": "Saved"
+	},
+	"saveAndExport": {
+		"message": "Save and export again"
+	},
+	"privacyTitle": {
+		"message": "Privacy"
+	},
+	"privacyBody": {
+		"message": "Your Funbridge sign-in is read from the Funbridge tab's own requests and kept only in Chrome's memory, never on disk; it is forgotten when Chrome closes. The Google token stays in memory only. On disk, Chrome keeps just these settings and the IDs of tournaments already saved. Nothing is sent anywhere except Funbridge, your Downloads folder and, if you turn it on, your Google Drive."
+	}
+}

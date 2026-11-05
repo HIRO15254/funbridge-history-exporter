@@ -1,38 +1,29 @@
-:root {
-	font-family:
-		system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-	color-scheme: light dark;
+body {
+	width: 340px;
 }
 
-body {
-	width: 360px;
-	margin: 0;
-	color: #18202d;
-	background: #f5f7fb;
+header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 12px 12px 4px 14px;
+}
+
+header h1 {
+	font-size: 15px;
+	font-weight: 650;
 }
 
 main {
-	padding: 18px;
-}
-h1 {
-	margin: 0 0 8px;
-	font-size: 20px;
-}
-.lead,
-.privacy,
-#status-detail {
-	line-height: 1.5;
-}
-.lead {
-	margin: 0 0 14px;
-	color: #536174;
+	display: grid;
+	gap: 10px;
+	padding: 8px 12px 14px;
 }
 
-.status-card {
-	padding: 12px;
-	background: #fff;
-	border: 1px solid #d7deea;
-	border-radius: 10px;
+.panel {
+	display: grid;
+	gap: 10px;
+	padding: 14px;
 }
 
 .status-line {
@@ -40,101 +31,49 @@ h1 {
 	gap: 8px;
 	align-items: center;
 }
-.dot {
-	width: 10px;
-	height: 10px;
-	background: #8b98aa;
-	border-radius: 50%;
-}
-.dot.ready {
-	background: #168a51;
-}
-.dot.busy {
-	background: #d98600;
-}
-.dot.error {
-	background: #c73737;
-}
-#status-detail {
-	margin: 8px 0 0;
-	font-size: 13px;
-	color: #536174;
-	white-space: pre-wrap;
-	overflow-wrap: anywhere;
-	user-select: text;
-}
-progress {
-	width: 100%;
-	margin-top: 10px;
+
+.status-line strong {
+	font-size: 14px;
 }
 
-.steps {
-	padding-left: 22px;
-	margin: 14px 0;
-	font-size: 13px;
-	line-height: 1.55;
+.count {
+	margin-left: auto;
+	font-variant-numeric: tabular-nums;
+	color: var(--muted);
 }
-label {
-	display: block;
-	margin-bottom: 5px;
-	font-size: 12px;
-	font-weight: 650;
-}
-input {
-	box-sizing: border-box;
+
+.wide {
 	width: 100%;
-	padding: 9px;
-	color: inherit;
-	background: #fff;
-	border: 1px solid #c7d0df;
-	border-radius: 7px;
+	min-height: 38px;
 }
-.actions {
-	display: grid;
+
+.center {
+	text-align: center;
+}
+
+.row {
+	display: flex;
 	gap: 8px;
-	margin-top: 12px;
-}
-button {
-	padding: 10px 12px;
-	font-weight: 650;
-	color: inherit;
-	cursor: pointer;
-	background: #fff;
-	border: 1px solid #b7c2d3;
-	border-radius: 8px;
-}
-button.primary {
-	color: #fff;
-	background: #1d63d4;
-	border-color: #1d63d4;
-}
-button.secondary {
-	background: transparent;
-}
-button:disabled {
-	cursor: not-allowed;
-	opacity: 0.48;
-}
-.privacy {
-	margin: 13px 0 0;
-	font-size: 11px;
-	color: #68768a;
 }
 
-@media (prefers-color-scheme: dark) {
-	body {
-		color: #edf2fa;
-		background: #151a22;
-	}
-	.lead,
-	#status-detail,
-	.privacy {
-		color: #aeb9c9;
-	}
-	.status-card,
-	input,
-	button {
-		background: #202734;
-		border-color: #3a4657;
-	}
+.grow {
+	flex: 1;
+}
+
+.ellipsis {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.last-run {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	justify-content: space-between;
+	padding: 2px 4px 0;
+}
+
+.last-run p {
+	font-variant-numeric: tabular-nums;
 }

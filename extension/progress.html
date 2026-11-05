@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>Funbridge export</title>
+		<link rel="icon" href="icons/icon-16.png">
+		<link rel="stylesheet" href="ui/base.css">
+		<link rel="stylesheet" href="progress.css">
+	</head>
+	<body>
+		<header class="topbar">
+			<div class="brand">
+				<img src="icons/icon-48.png" alt="">
+				<span data-i18n="extShortName">Funbridge Exporter</span>
+			</div>
+			<button id="settings" type="button" class="quiet" data-i18n="settings">Settings</button>
+		</header>
+
+		<main class="wrap">
+			<section class="card hero" aria-live="polite">
+				<div class="hero-head">
+					<span id="status-dot" class="dot"></span>
+					<h1 id="status-title" data-i18n="progressTitle">Export progress</h1>
+					<span id="started" class="muted small push"></span>
+				</div>
+
+				<ol id="steps" class="steps">
+					<li data-step="connecting" data-i18n="stepSignIn">Funbridge sign-in</li>
+					<li data-step="listing" data-i18n="stepListing">Read history</li>
+					<li data-step="saving" data-i18n="stepSaving">Save new tournaments</li>
+					<li data-step="done" data-i18n="stepDone">Done</li>
+				</ol>
+
+				<div id="meter" class="meter">
+					<div class="meter-numbers">
+						<p><span id="count" class="count"></span> <span id="count-unit" class="muted" data-i18n="tournamentsUnit">tournaments</span></p>
+						<p id="percent" class="percent"></p>
+					</div>
+					<div id="bar" class="bar large"><span></span></div>
+					<div class="meter-meta small">
+						<span id="current" class="muted ellipsis"></span>
+						<span id="timing" class="muted nowrap"></span>
+					</div>
+				</div>
+
+				<div id="alert" class="alert" hidden>
+					<strong id="alert-title"></strong>
+					<p id="alert-body"></p>
+					<details id="alert-details" hidden>
+						<summary class="small" data-i18n="technicalDetails">Technical details</summary>
+						<pre id="alert-raw" class="raw"></pre>
+					</details>
+					<div id="alert-actions" class="actions"></div>
+				</div>
+
+				<div class="actions">
+					<button id="again" type="button" class="primary" hidden></button>
+					<button id="cancel" type="button" data-i18n="cancel" hidden>Cancel</button>
+					<button id="open-downloads" type="button" data-i18n="openDownloads">Open Downloads folder</button>
+					<a id="open-drive" class="button" href="https://drive.google.com/" target="_blank" rel="noopener" data-i18n="openDrive" hidden>Open in Google Drive</a>
+				</div>
+			</section>
+
+			<section class="tiles">
+				<div class="card tile">
+					<p class="tile-label" data-i18n="tileSaved">Saved now</p>
+					<p id="tile-saved" class="tile-value">0</p>
+				</div>
+				<div class="card tile">
+					<p class="tile-label" data-i18n="tileAlready">Already saved</p>
+					<p id="tile-already" class="tile-value">0</p>
+				</div>
+				<div class="card tile">
+					<p class="tile-label" data-i18n="tileFailed">Could not fetch</p>
+					<p id="tile-failed" class="tile-value">0</p>
+				</div>
+				<div class="card tile">
+					<p class="tile-label" data-i18n="tileBoards">Boards saved</p>
+					<p id="tile-boards" class="tile-value">0</p>
+				</div>
+			</section>
+
+			<section class="card section">
+				<h2 data-i18n="byType">By type</h2>
+				<div class="table-scroll">
+					<table>
+						<thead>
+							<tr>
+								<th scope="col" data-i18n="colType">Type</th>
+								<th scope="col" class="num" data-i18n="colFound">In history</th>
+								<th scope="col" class="num" data-i18n="colAlready">Already saved</th>
+								<th scope="col" class="num" data-i18n="colSaved">Saved now</th>
+								<th scope="col" class="num" data-i18n="colFailed">Could not fetch</th>
+							</tr>
+						</thead>
+						<tbody id="families"></tbody>
+					</table>
+				</div>
+			</section>
+
+			<section class="card section">
+				<div class="section-head">
+					<h2 data-i18n="activity">Activity</h2>
+					<div class="segmented">
+						<button id="filter-all" type="button" aria-pressed="true"></button>
+						<button id="filter-failed" type="button" aria-pressed="false"></button>
+					</div>
+				</div>
+				<ol id="log" class="log"></ol>
+				<p id="log-empty" class="muted small"></p>
+			</section>
+		</main>
+		<script type="module" src="progress.js"></script>
+	</body>
+</html>

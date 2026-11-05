@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>Funbridge Exporter settings</title>
+		<link rel="icon" href="icons/icon-16.png">
+		<link rel="stylesheet" href="ui/base.css">
+		<link rel="stylesheet" href="options.css">
+	</head>
+	<body>
+		<main class="wrap">
+			<header class="page-head">
+				<div class="brand">
+					<img src="icons/icon-48.png" alt="">
+					<h1 data-i18n="settingsTitle">Settings</h1>
+				</div>
+				<span id="saved-flash" class="muted small" role="status"></span>
+			</header>
+
+			<section class="card section">
+				<h2 data-i18n="whereToSave">Where to save</h2>
+
+				<div class="option">
+					<div>
+						<p class="option-title" data-i18n="destinationDownloads">Downloads folder</p>
+						<p class="muted small" data-i18n="downloadsHelp">Always on. Files go to Downloads/funbridge-export/, one PBN file per tournament.</p>
+					</div>
+					<button id="open-downloads" type="button" data-i18n="openFolder">Open folder</button>
+				</div>
+
+				<div class="option">
+					<div>
+						<label class="option-title" for="to-drive" data-i18n="driveToggle">Also save to Google Drive</label>
+						<p class="muted small" data-i18n="driveHelp">Uploads each file to the funbridge-export folder in My Drive. The extension can only see files it created.</p>
+					</div>
+					<input id="to-drive" type="checkbox" class="switch">
+				</div>
+
+				<div id="drive-setup" class="subsection" hidden>
+					<label for="drive-client-id" data-i18n="clientIdLabel">Google OAuth client ID</label>
+					<input id="drive-client-id" type="text" autocomplete="off" spellcheck="false" placeholder="1234-abc.apps.googleusercontent.com">
+					<p class="muted small" data-i18n="clientIdHelp">Create a "Web application" client in Google Cloud once and add this redirect URI to it:</p>
+					<div class="copy-row">
+						<code id="redirect-uri"></code>
+						<button id="copy-redirect" type="button" class="small-button" data-i18n="copy">Copy</button>
+					</div>
+					<p class="small"><a href="https://github.com/HIRO15254/funbridge-history-exporter#saving-to-google-drive" target="_blank" rel="noopener" data-i18n="setupGuide">Setup guide</a></p>
+					<div class="row">
+						<button id="connect-drive" type="button" class="primary" data-i18n="connectDrive">Connect Google Drive</button>
+						<span id="drive-status" class="small" role="status"></span>
+					</div>
+				</div>
+			</section>
+
+			<section class="card section">
+				<h2 data-i18n="savedTournaments">Saved tournaments</h2>
+				<div class="option">
+					<p id="ledger-count" class="small"></p>
+					<button id="forget" type="button" class="danger" data-i18n="forgetSaved">Forget saved tournaments</button>
+				</div>
+				<p class="muted small" data-i18n="forgetHelp">Exports skip finished tournaments that were already saved. Forget them to save your whole history again next time.</p>
+			</section>
+
+			<section class="card section">
+				<details id="advanced">
+					<summary><h2 data-i18n="advanced">Advanced</h2></summary>
+					<div class="subsection">
+						<label for="account-id" data-i18n="accountIdLabel">Your Funbridge ID</label>
+						<input id="account-id" type="text" inputmode="numeric" autocomplete="off" placeholder="1234567">
+						<p id="account-help" class="muted small"></p>
+					</div>
+				</details>
+			</section>
+
+			<section class="privacy small muted">
+				<h2 data-i18n="privacyTitle">Privacy</h2>
+				<p data-i18n="privacyBody">Your Funbridge sign-in is read from the Funbridge tab's own requests and kept only in Chrome's memory, never on disk; it is forgotten when Chrome closes. The Google token stays in memory only. On disk, Chrome keeps just these settings and the IDs of tournaments already saved. Nothing is sent anywhere except Funbridge, your Downloads folder and, if you turn it on, your Google Drive.</p>
+			</section>
+		</main>
+		<script type="module" src="options.js"></script>
+	</body>
+</html>

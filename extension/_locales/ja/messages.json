@@ -1,0 +1,416 @@
+{
+	"extName": {
+		"message": "Funbridge History Exporter"
+	},
+	"extShortName": {
+		"message": "Funbridge Exporter"
+	},
+	"extDescription": {
+		"message": "Funbridge の大会履歴を PBN ファイルとしてダウンロードフォルダ（任意で Google ドライブ）に保存します。"
+	},
+	"badgeTitleRunning": {
+		"message": "Funbridge エクスポート中：$1%"
+	},
+	"checking": {
+		"message": "確認中…"
+	},
+	"settings": {
+		"message": "設定"
+	},
+	"settingsTitle": {
+		"message": "設定"
+	},
+	"readyTitle": {
+		"message": "エクスポートできます"
+	},
+	"readyDetail": {
+		"message": "Funbridge にサインイン済みです。"
+	},
+	"noSignInTitle": {
+		"message": "Funbridge のサインインをまだ確認できていません"
+	},
+	"noSignInDetail": {
+		"message": "拡張機能は Funbridge タブの読み込み時にサインインを読み取ります。下のボタンでタブを1回再読み込みしてから、エクスポートを始めます。"
+	},
+	"noTabTitle": {
+		"message": "Funbridge が開かれていません"
+	},
+	"noTabDetail": {
+		"message": "Funbridge を開いてサインインしてください。サインインは自動で検出されます。"
+	},
+	"openFunbridge": {
+		"message": "Funbridge を開く"
+	},
+	"reloadAndExport": {
+		"message": "Funbridge を再読み込みしてエクスポート"
+	},
+	"exportNew": {
+		"message": "新しい大会をエクスポート"
+	},
+	"exportAgain": {
+		"message": "もう一度エクスポート"
+	},
+	"savesTo": {
+		"message": "保存先：$1"
+	},
+	"destinationDownloads": {
+		"message": "ダウンロードフォルダ"
+	},
+	"destinationDrive": {
+		"message": "Google ドライブ"
+	},
+	"showProgress": {
+		"message": "進捗を表示"
+	},
+	"cancel": {
+		"message": "キャンセル"
+	},
+	"lastExport": {
+		"message": "前回のエクスポート"
+	},
+	"details": {
+		"message": "詳細"
+	},
+	"errorNoWorker": {
+		"message": "拡張機能が応答しません。chrome://extensions で再読み込みしてください。"
+	},
+	"statusIdle": {
+		"message": "エクスポートの進捗"
+	},
+	"statusConnecting": {
+		"message": "Funbridge に接続中"
+	},
+	"statusListing": {
+		"message": "履歴を読み込み中"
+	},
+	"statusSaving": {
+		"message": "大会を保存中"
+	},
+	"statusWaitingSignIn": {
+		"message": "Funbridge のサインイン待ち"
+	},
+	"statusDone": {
+		"message": "エクスポート完了"
+	},
+	"statusFailed": {
+		"message": "エクスポートが止まりました"
+	},
+	"statusCancelled": {
+		"message": "エクスポートをキャンセルしました"
+	},
+	"statusInterrupted": {
+		"message": "エクスポートが中断されました"
+	},
+	"connectingDetail": {
+		"message": "サインイン済みの Funbridge タブを確認しています…"
+	},
+	"readingFamily": {
+		"message": "$1 の履歴を読み込み中…"
+	},
+	"boardOf": {
+		"message": "ボード $1 / $2"
+	},
+	"boardN": {
+		"message": "ボード $1"
+	},
+	"startingTournament": {
+		"message": "開始中"
+	},
+	"waitingSignInShort": {
+		"message": "続けるには Funbridge タブを再読み込みしてください。"
+	},
+	"waitingSignInTitle": {
+		"message": "Funbridge からサインアウトされました"
+	},
+	"waitingSignInBody": {
+		"message": "サインインの期限切れか、別の端末で Funbridge が開かれたためです。Funbridge タブを再読み込み（必要ならサインイン）すると、エクスポートは自動で再開します。最大10分待ちます。"
+	},
+	"reloadFunbridge": {
+		"message": "Funbridge タブを再読み込み"
+	},
+	"openSettings": {
+		"message": "設定を開く"
+	},
+	"openDownloads": {
+		"message": "ダウンロードフォルダを開く"
+	},
+	"openDrive": {
+		"message": "Google ドライブで開く"
+	},
+	"technicalDetails": {
+		"message": "技術的な詳細"
+	},
+	"savedAreKept": {
+		"message": "ここまでに保存した大会はそのまま残り、次回はその続きから保存します。"
+	},
+	"failedRetryNextTime": {
+		"message": "次回のエクスポートで再取得します。理由は「アクティビティ」の「問題」で確認できます。"
+	},
+	"nothingNewTitle": {
+		"message": "新しい大会はありません"
+	},
+	"nothingNewBody": {
+		"message": "履歴の終了した大会はすべて保存済みです。"
+	},
+	"noRunTitle": {
+		"message": "実行中のエクスポートはありません"
+	},
+	"progressTitle": {
+		"message": "エクスポートの進捗"
+	},
+	"startedAt": {
+		"message": "$1 に開始"
+	},
+	"elapsed": {
+		"message": "経過 $1"
+	},
+	"remaining": {
+		"message": "残り約 $1"
+	},
+	"tournamentsUnit": {
+		"message": "大会"
+	},
+	"stepSignIn": {
+		"message": "サインイン確認"
+	},
+	"stepListing": {
+		"message": "履歴の読み込み"
+	},
+	"stepSaving": {
+		"message": "新しい大会を保存"
+	},
+	"stepDone": {
+		"message": "完了"
+	},
+	"tileSaved": {
+		"message": "今回保存"
+	},
+	"tileAlready": {
+		"message": "保存済み"
+	},
+	"tileFailed": {
+		"message": "取得できず"
+	},
+	"tileBoards": {
+		"message": "保存したボード"
+	},
+	"byType": {
+		"message": "種類別"
+	},
+	"colType": {
+		"message": "種類"
+	},
+	"colFound": {
+		"message": "履歴"
+	},
+	"colAlready": {
+		"message": "保存済み"
+	},
+	"colSaved": {
+		"message": "今回保存"
+	},
+	"colFailed": {
+		"message": "取得できず"
+	},
+	"familyPending": {
+		"message": "待機中"
+	},
+	"familyListing": {
+		"message": "読み込み中…"
+	},
+	"familyUnavailable": {
+		"message": "読み込めませんでした"
+	},
+	"family_BP_CIRCUIT": {
+		"message": "BP Circuit"
+	},
+	"family_SERIES": {
+		"message": "Series"
+	},
+	"family_DAILY": {
+		"message": "Daily"
+	},
+	"activity": {
+		"message": "アクティビティ"
+	},
+	"filterAll": {
+		"message": "すべて ($1)"
+	},
+	"filterProblems": {
+		"message": "問題 ($1)"
+	},
+	"logEmpty": {
+		"message": "まだありません。"
+	},
+	"logNoProblems": {
+		"message": "問題はありません。"
+	},
+	"logSignInLost": {
+		"message": "Funbridge からサインアウト — タブの再サインインを待っています"
+	},
+	"logSignInBack": {
+		"message": "再サインインを確認 — 再開しました"
+	},
+	"familyListFailed": {
+		"message": "$1 の履歴を読み込めませんでした"
+	},
+	"boardsCount": {
+		"message": "$1 ボード"
+	},
+	"driveUploaded": {
+		"message": "ドライブにアップロード"
+	},
+	"driveExisting": {
+		"message": "ドライブに既存"
+	},
+	"summarySaved": {
+		"message": "新規 $1"
+	},
+	"summaryAlready": {
+		"message": "保存済み $1"
+	},
+	"summaryFailed": {
+		"message": "失敗 $1"
+	},
+	"notifyDoneTitle": {
+		"message": "Funbridge エクスポート完了"
+	},
+	"notifySaved": {
+		"message": "新しい大会を $1 件保存しました（保存済み $2 件）。"
+	},
+	"notifyNothingNew": {
+		"message": "新しい大会はありません（保存済み $1 件）。"
+	},
+	"notifyFailedSome": {
+		"message": "$1 件の大会を取得できませんでした。"
+	},
+	"notifyFailedTitle": {
+		"message": "Funbridge エクスポートが止まりました"
+	},
+	"notifySignedOutTitle": {
+		"message": "Funbridge からサインアウトされました"
+	},
+	"notifySignedOutBody": {
+		"message": "Funbridge タブを再読み込みするとエクスポートを再開します。"
+	},
+	"hintAuthExpired": {
+		"message": "Funbridge からサインアウトされ、再サインインされませんでした。"
+	},
+	"hintDriveSignIn": {
+		"message": "Google ドライブにサインインできませんでした。設定のクライアント ID を確認してください。"
+	},
+	"hintNoAccountId": {
+		"message": "Funbridge ID を検出できませんでした。下に入力してください（設定の「詳細設定」でも変更できます）。"
+	},
+	"hintNoHistory": {
+		"message": "Funbridge の履歴に大会が見つかりませんでした。"
+	},
+	"hintNoSignIn": {
+		"message": "Funbridge のサインインを確認できませんでした。そのタブで Funbridge にサインインしてから、もう一度エクスポートしてください。"
+	},
+	"hintNoTab": {
+		"message": "Funbridge を開いてサインインしてから、もう一度エクスポートしてください。"
+	},
+	"hintSaveFailed": {
+		"message": "ファイルを保存できませんでした。"
+	},
+	"hintTabUnavailable": {
+		"message": "Funbridge タブが閉じられたか、別のページに移動しました。"
+	},
+	"hintInterrupted": {
+		"message": "完了前に Chrome がエクスポートを停止しました。"
+	},
+	"hintGeneric": {
+		"message": "問題が発生しました。"
+	},
+	"whereToSave": {
+		"message": "保存先"
+	},
+	"downloadsHelp": {
+		"message": "常に有効です。ダウンロード/funbridge-export/ に大会ごとの PBN ファイルを保存します。"
+	},
+	"openFolder": {
+		"message": "フォルダを開く"
+	},
+	"driveToggle": {
+		"message": "Google ドライブにも保存する"
+	},
+	"driveHelp": {
+		"message": "マイドライブの funbridge-export フォルダにもアップロードします。拡張機能が見られるのは自分で作ったファイルだけです。"
+	},
+	"clientIdLabel": {
+		"message": "Google OAuth クライアント ID"
+	},
+	"clientIdHelp": {
+		"message": "Google Cloud で「ウェブ アプリケーション」のクライアントを一度作成し、次のリダイレクト URI を登録してください："
+	},
+	"copy": {
+		"message": "コピー"
+	},
+	"copied": {
+		"message": "コピーしました"
+	},
+	"setupGuide": {
+		"message": "設定ガイド"
+	},
+	"connectDrive": {
+		"message": "Google ドライブに接続"
+	},
+	"driveConnecting": {
+		"message": "Google の応答を待っています…"
+	},
+	"driveConnected": {
+		"message": "接続しました。エクスポートは Google ドライブにも保存されます。"
+	},
+	"driveConnectFailed": {
+		"message": "接続できませんでした：$1"
+	},
+	"driveNeedsClientId": {
+		"message": "先に Google OAuth クライアント ID を入力してください。"
+	},
+	"savedTournaments": {
+		"message": "保存済みの大会"
+	},
+	"ledgerCount": {
+		"message": "$1 件の終了した大会を保存済みとして記録しています。"
+	},
+	"forgetSaved": {
+		"message": "保存済みの記録を消す"
+	},
+	"forgetHelp": {
+		"message": "エクスポートは保存済みの終了した大会をスキップします。記録を消すと、次回は履歴全体をもう一度保存します。"
+	},
+	"forgetConfirm": {
+		"message": "保存済みの記録をすべて消しますか？次回のエクスポートで履歴全体を再取得・再保存します。"
+	},
+	"forgotten": {
+		"message": "記録を消しました"
+	},
+	"advanced": {
+		"message": "詳細設定"
+	},
+	"accountIdLabel": {
+		"message": "Funbridge ID"
+	},
+	"accountHelp": {
+		"message": "エクスポート中に自動で検出されます。検出できない場合だけ入力してください。"
+	},
+	"accountDetected": {
+		"message": "自動検出された ID：$1。違う場合だけ入力してください。"
+	},
+	"accountInvalid": {
+		"message": "Funbridge ID は数字です。"
+	},
+	"settingsSaved": {
+		"message": "保存しました"
+	},
+	"saveAndExport": {
+		"message": "保存してもう一度エクスポート"
+	},
+	"privacyTitle": {
+		"message": "プライバシー"
+	},
+	"privacyBody": {
+		"message": "Funbridge のサインインは Funbridge タブ自身の通信から読み取り、Chrome のメモリ上にだけ保持します（ディスクには書きません）。Chrome を閉じると消えます。Google のトークンもメモリ上だけです。ディスクに残るのはこの設定と保存済みの大会 ID だけです。データの送信先は Funbridge、ダウンロードフォルダ、（有効にした場合）Google ドライブだけです。"
+	}
+}
