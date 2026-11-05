@@ -23,7 +23,7 @@ Funbridge Web版の認証済みタブから、BP Circuit・Series・Dailyの履�
 
 1. Funbridge Web版へログインし、そのタブを表示したまま拡張機能を開く。
 2. 「Detect traffic」を押す。Chromeがデバッガー接続中であることを表示するのは想定どおりです。
-3. 同じタブで履歴か大会結果を1回開く。拡張機能が許可済みAPIのURLとAuthorizationヘッダーを検出します。
+3. 同じタブで履歴か大会結果を1回開く。拡張機能が許可済みAPIのURLとAuthorizationヘッダーを検出します。DailyとSeriesの大会履歴ページも開いておくと、Funbridgeがその一覧に送る実際のリクエストをそのまま再利用します。
 4. 状態が「Ready to export」になったら「Save all history」を押す。
 5. 完了したら「Disconnect」を押す。タブを閉じた場合もデバッガー接続が解除され、メモリー内の認証情報は破棄されます。
 
@@ -53,7 +53,7 @@ Chrome DevTools Protocolの `Network` イベントで、ユーザー自身の操
 | 用途 | エンドポイント |
 | --- | --- |
 | BP Circuit履歴 | `bridgePoints/historic` |
-| 大会履歴（Series / Daily / BIC） | `tournament/getTournamentArchives` |
+| 大会履歴（Series / Daily / BIC） | `result/getTournamentArchives` |
 | 大会結果 | `result/getResultDealForTournament` |
 | ボード概要 | `result/getDealResultSummary` |
 | 契約分布 | `result/getResultForDeal` |

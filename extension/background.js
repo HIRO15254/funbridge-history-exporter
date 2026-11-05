@@ -1,6 +1,7 @@
 import { exportAllHistory } from "./lib/exporter.js";
 import {
 	authorizationFrom,
+	describeObservedCall,
 	parseApiUrl,
 	parsePostData,
 	runtimeFetchExpression,
@@ -93,6 +94,7 @@ async function connect() {
 	}
 	session = {
 		debuggee,
+		observedCalls: new Set(),
 		pendingRequests: new Map(),
 		tabId: tab.id,
 		templates: {}
@@ -129,13 +131,24 @@ chromeApi.debugger.onEvent.addListener((source, method, params) => {
 		return;
 	}
 	if (method === "Network.requestWillBeSent") {
+		const observed = describeObservedCall(
+			params.request?.url,
+			params.request?.postData
+		);
+		if (observed && current.observedCalls.size < 200) {
+			current.observedCalls.add(observed);
+		}
 		const parsed = parseApiUrl(params.request?.url);
 		if (!parsed) {
 			return;
 		}
 		const body = parsePostData(params.request?.postData);
 		current.pendingRequests.set(params.requestId, parsed);
-		current.templates[parsed.endpoint] = { body, url: params.request.url };
+		const template = { body, url: params.request.url };
+		current.templates[parsed.endpoint] = template;
+		if (body.categoryID !== undefined) {
+			current.templates[`${parsed.endpoint}#${body.categoryID}`] = template;
+		}
 		observeAuthorization(current, parsed, params.request?.headers);
 		return;
 	}
@@ -228,15 +241,29 @@ async function startExport(accountId) {
 				progress: { current: index + 1, total: result.files.length }
 			});
 		}
+		const unavailable = result.summary.unavailableFamilies.map(
+			({ family, reason }) => `${family} history could not be read: ${reason}`
+		);
 		publish({
-			detail: `Saved ${plural(result.summary.tournamentFileCount, "tournament")} and ${plural(result.summary.boardCount, "board")} as PBN. Skipped ${result.summary.skipped.length} of ${plural(result.summary.indexCount, "tournament")} in the history. Disconnect to discard the credentials.`,
+			detail: [
+				`Saved ${plural(result.summary.tournamentFileCount, "tournament")} and ${plural(result.summary.boardCount, "board")} as PBN. Skipped ${result.summary.skipped.length} of ${plural(result.summary.indexCount, "tournament")} in the history.`,
+				...unavailable,
+				...result.summary.skipped
+					.slice(0, 3)
+					.map((row) => `Skipped ${row.family} "${row.title}": ${row.reason}`),
+				"Disconnect to discard the credentials."
+			].join("\n\n"),
 			phase: "READY",
 			progress: undefined,
 			title: "Export complete"
 		});
 	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		const observed = [...(current.observedCalls ?? [])];
 		publish({
-			detail: error instanceof Error ? error.message : String(error),
+			detail: observed.length
+				? `${message}\n\nFunbridge APIs seen in this tab:\n${observed.join("\n")}`
+				: message,
 			phase: "ERROR",
 			progress: undefined,
 			title: "Export failed"

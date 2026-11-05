@@ -23,6 +23,7 @@ function sourceTournamentId(row) {
 		row?.sourceTournamentId ??
 		row?.tournamentID ??
 		row?.tourIDstr ??
+		row?.tournamentId ??
 		row?.id ??
 		row?.ID;
 	if (value === undefined || value === null || value === "") {
@@ -39,12 +40,32 @@ function uniqueRows(rows) {
 	return [...byId.values()];
 }
 
-async function collectPages(post, endpoint, initialBody) {
+// Key names and array lengths only (never values), so an empty list can be
+// told apart from a response shape the parser does not recognise.
+export function describeShape(value, depth = 0) {
+	if (Array.isArray(value)) {
+		return `[${value.length}]`;
+	}
+	if (!value || typeof value !== "object") {
+		return typeof value;
+	}
+	if (depth >= 2) {
+		return "{…}";
+	}
+	return `{${Object.entries(value)
+		.map(([key, child]) => `${key}:${describeShape(child, depth + 1)}`)
+		.join(",")}}`;
+}
+
+async function collectPages(post, endpoint, initialBody, shapes) {
 	const rows = [];
 	let offset = Number(initialBody.offset ?? 0);
 	let expected;
 	for (let pageNumber = 0; pageNumber < 100; pageNumber++) {
 		const payload = await post(endpoint, { ...initialBody, offset });
+		if (pageNumber === 0 && shapes) {
+			shapes[endpoint] = describeShape(payload).slice(0, 400);
+		}
 		const page = archivePage(payload);
 		if (expected === undefined) {
 			expected = page.totalSize;
@@ -110,10 +131,8 @@ async function collectGroups(post, sourceDealId, categoryID) {
 
 async function collectSummary(post, sourceDealId, categoryID, matchId) {
 	const payload = await post(ENDPOINTS.dealSummary, {
-		dealID:
-			categoryID === 6 && numericIdPattern.test(String(sourceDealId))
-				? Number(sourceDealId)
-				: String(sourceDealId),
+		// The web app sends a string deal ID for every category, Daily included.
+		dealID: String(sourceDealId),
 		categoryID,
 		nbMaxMostPlayedContracts: 5,
 		...(matchId ? { matchId } : {})
@@ -230,12 +249,13 @@ async function collectBpTournament(post, row, options) {
 				/* Continue to BIC detection and report the original route only after all known routes fail. */
 			}
 		}
-		const children = await collectPages(post, ENDPOINTS.tournamentArchives, {
-			count: 50,
-			offset: 0,
-			categoryID: 32,
-			tournamentId: sourceTournamentId(row)
-		});
+		const children = await collectPages(
+			post,
+			ENDPOINTS.tournamentArchives,
+			archiveRequestBody(options.templates, 32, {
+				tournamentId: sourceTournamentId(row)
+			})
+		);
 		if (children.length === 0) {
 			throw new Error(`Results unavailable: ${federalError.message}`);
 		}
@@ -253,6 +273,18 @@ async function collectBpTournament(post, row, options) {
 	}
 }
 
+// A hand-built getTournamentArchives body may lack fields the Funbridge client
+// sends, so start from the request the page actually made when one was
+// observed, and only override the paging and category.
+export function archiveRequestBody(templates, categoryID, extra = {}) {
+	const observed =
+		templates?.[`${ENDPOINTS.tournamentArchives}#${categoryID}`]?.body ??
+		templates?.[ENDPOINTS.tournamentArchives]?.body ??
+		{};
+	const { tournamentId: _ignored, ...base } = observed;
+	return { count: 50, ...base, ...extra, offset: 0, categoryID };
+}
+
 function accountIdFor(captures, provided) {
 	if (provided && numericIdPattern.test(provided)) {
 		return provided;
@@ -262,26 +294,51 @@ function accountIdFor(captures, provided) {
 		.find((value) => value && numericIdPattern.test(String(value)));
 }
 
-async function collectArchives(post, templates) {
+async function optionalFamily(family, unavailable, load) {
+	try {
+		return await load();
+	} catch (error) {
+		// One history list failing must not throw away the others.
+		unavailable.push({
+			family,
+			reason: error instanceof Error ? error.message : String(error)
+		});
+		return [];
+	}
+}
+
+async function collectArchives(post, templates, shapes) {
+	// bridgePoints/historic pages with nbMax, not count.
 	const historyBody = {
-		count: 50,
+		nbMax: 50,
 		offset: 0,
 		...(templates[ENDPOINTS.bpHistory]?.body ?? {})
 	};
 	historyBody.offset = 0;
-	return {
-		BP_CIRCUIT: await collectPages(post, ENDPOINTS.bpHistory, historyBody),
-		SERIES: await collectPages(post, ENDPOINTS.tournamentArchives, {
-			count: 50,
-			offset: 0,
-			categoryID: 8
-		}),
-		DAILY: await collectPages(post, ENDPOINTS.tournamentArchives, {
-			count: 50,
-			offset: 0,
-			categoryID: 6
-		})
+	const unavailable = [];
+	const archives = {
+		BP_CIRCUIT: await collectPages(
+			post,
+			ENDPOINTS.bpHistory,
+			historyBody,
+			shapes
+		),
+		SERIES: await optionalFamily("SERIES", unavailable, () =>
+			collectPages(
+				post,
+				ENDPOINTS.tournamentArchives,
+				archiveRequestBody(templates, 8)
+			)
+		),
+		DAILY: await optionalFamily("DAILY", unavailable, () =>
+			collectPages(
+				post,
+				ENDPOINTS.tournamentArchives,
+				archiveRequestBody(templates, 6)
+			)
+		)
 	};
+	return { archives, unavailable };
 }
 
 function captureOne(post, family, row, options) {
@@ -294,7 +351,11 @@ function captureOne(post, family, row, options) {
 	]);
 }
 
-async function captureTournaments(post, archives, { accountId, onProgress }) {
+async function captureTournaments(
+	post,
+	archives,
+	{ accountId, onProgress, templates }
+) {
 	const total = Object.values(archives).reduce(
 		(sum, rows) => sum + rows.length,
 		0
@@ -312,7 +373,8 @@ async function captureTournaments(post, archives, { accountId, onProgress }) {
 					...(await captureOne(post, family, row, {
 						accountId,
 						family,
-						progress
+						progress,
+						templates
 					}))
 				);
 			} catch (error) {
@@ -338,15 +400,33 @@ export async function exportAllHistory({
 	onProgress
 }) {
 	const capturedAt = new Date().toISOString();
-	const archives = await collectArchives(post, templates);
+	const shapes = {};
+	const { archives, unavailable } = await collectArchives(
+		post,
+		templates,
+		shapes
+	);
 	const { captures, indexCount, skipped } = await captureTournaments(
 		post,
 		archives,
-		{ accountId, onProgress }
+		{ accountId, onProgress, templates }
 	);
 
+	if (indexCount === 0) {
+		const lines = [
+			`No tournament could be exported. History rows found: BP Circuit ${archives.BP_CIRCUIT.length}, Series ${archives.SERIES.length}, Daily ${archives.DAILY.length}.`,
+			...unavailable.map(
+				({ family, reason }) => `${family} history could not be read: ${reason}`
+			),
+			...(archives.BP_CIRCUIT.length === 0 && shapes[ENDPOINTS.bpHistory]
+				? [`BP Circuit response shape: ${shapes[ENDPOINTS.bpHistory]}`]
+				: [])
+		];
+		throw new Error(lines.join("\n"));
+	}
+
 	const detectedAccountId = accountIdFor(captures, accountId);
-	if (!detectedAccountId) {
+	if (!detectedAccountId && captures.length > 0) {
 		throw new Error(
 			"Could not detect your Funbridge ID. Enter your numeric ID in the input field and try again."
 		);
@@ -376,6 +456,7 @@ export async function exportAllHistory({
 			),
 			indexCount,
 			skipped,
+			unavailableFamilies: unavailable,
 			tournamentFileCount: captures.length
 		}
 	};

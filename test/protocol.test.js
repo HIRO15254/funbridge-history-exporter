@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
 	authorizationFrom,
+	describeObservedCall,
 	ENDPOINTS,
 	isFunbridgePage,
 	parseApiUrl,
@@ -100,4 +101,85 @@ test("surfaces the API error instead of the raw response body", () => {
 		/JSON/
 	);
 	assert.throws(() => unwrapApiResult({ exceptionDetails: {} }, "x"));
+});
+
+test("explains a non-JSON response with its status, type and a short body", () => {
+	assert.throws(
+		() =>
+			unwrapApiResult(
+				{
+					result: {
+						value: {
+							contentType: "text/html;charset=utf-8",
+							status: 400,
+							text: "<html><body><h1>HTTP Status 400 – Bad Request</h1></body></html>"
+						}
+					}
+				},
+				"result/getTournamentArchives"
+			),
+		/not JSON \(HTTP 400, text\/html, body: "HTTP Status 400 – Bad Request"\)/
+	);
+});
+
+test("treats an empty successful body as an empty payload", () => {
+	assert.deepEqual(
+		unwrapApiResult({ result: { value: { status: 200, text: "" } } }, "x"),
+		{}
+	);
+	assert.throws(
+		() =>
+			unwrapApiResult({ result: { value: { status: 401, text: "" } } }, "x"),
+		/HTTP 401, empty body/
+	);
+});
+
+test("describes an observed Funbridge call by host, path and body keys only", () => {
+	assert.equal(
+		describeObservedCall(
+			`${root}/tournament/getArchives`,
+			'{"offset":0,"categoryID":6,"nbMax":20}'
+		),
+		"example.funbridge.net/tournament/getArchives {categoryID,nbMax,offset}"
+	);
+	assert.equal(
+		describeObservedCall(`${root}/${ENDPOINTS.bpHistory}`),
+		`example.funbridge.net/${ENDPOINTS.bpHistory}`
+	);
+	assert.equal(describeObservedCall("https://example.invalid/x"), undefined);
+});
+
+test("reads the archive list in the shape result/getTournamentArchives returns", async () => {
+	const { archivePage } = await import("../extension/lib/protocol.js");
+	const page = archivePage({
+		exception: null,
+		data: {
+			offset: 0,
+			totalSize: 2,
+			archives: [
+				{ categoryID: 6, tournamentID: "11457", listPlayedDeals: ["1", "2"] },
+				{ categoryID: 6, tournamentID: "11458", listPlayedDeals: ["3"] }
+			],
+			nbQualifTournaments: 0
+		}
+	});
+	assert.equal(page.rows.length, 2);
+	assert.equal(page.totalSize, 2);
+	assert.equal(page.offset, 0);
+});
+
+test("accepts a contract distribution whose tournament is null", async () => {
+	const { resultDealTournament } = await import("../extension/lib/protocol.js");
+	const groups = resultDealTournament({
+		data: {
+			resultDealTournament: {
+				listResultDeal: [{ dealIDstr: "142496", contract: "3N" }],
+				tournament: null,
+				offset: 0,
+				totalSize: 73
+			}
+		}
+	});
+	assert.equal(groups.totalSize, 73);
+	assert.throws(() => resultDealTournament({ data: {} }), /Unrecognized/);
 });

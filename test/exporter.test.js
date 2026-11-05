@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { exportAllHistory } from "../extension/lib/exporter.js";
+import {
+	archiveRequestBody,
+	exportAllHistory
+} from "../extension/lib/exporter.js";
 import { ENDPOINTS } from "../extension/lib/protocol.js";
 import { archive, capture, tournament } from "./fixtures/capture.js";
 
@@ -58,7 +61,7 @@ test("walks history, boards and contract groups, then writes one PBN per tournam
 	assert.equal(
 		calls.find(({ endpoint }) => endpoint === ENDPOINTS.dealSummary).body
 			.dealID,
-		7001
+		"7001"
 	);
 });
 
@@ -114,4 +117,134 @@ test("fails loudly when the player id cannot be resolved", async () => {
 		() => exportAllHistory({ post, templates: {} }),
 		/Funbridge ID/
 	);
+});
+
+test("builds archive requests from the body the page actually sent", () => {
+	const templates = {
+		[ENDPOINTS.tournamentArchives]: {
+			body: { categoryID: 6, count: 20, offset: 40, tournamentId: "1", type: 2 }
+		},
+		[`${ENDPOINTS.tournamentArchives}#8`]: {
+			body: { categoryID: 8, count: 30, offset: 0, filter: "series" }
+		}
+	};
+	assert.deepEqual(archiveRequestBody(templates, 6), {
+		categoryID: 6,
+		count: 20,
+		offset: 0,
+		type: 2
+	});
+	assert.deepEqual(archiveRequestBody(templates, 8), {
+		categoryID: 8,
+		count: 30,
+		filter: "series",
+		offset: 0
+	});
+	assert.deepEqual(archiveRequestBody({}, 32, { tournamentId: "77" }), {
+		categoryID: 32,
+		count: 50,
+		offset: 0,
+		tournamentId: "77"
+	});
+});
+
+test("sends the observed archive template when walking Daily history", async () => {
+	const { calls, post } = stubApi();
+	await exportAllHistory({
+		accountId: "123456",
+		post,
+		templates: {
+			[ENDPOINTS.tournamentArchives]: {
+				body: { categoryID: 6, count: 25, offset: 0, extra: true }
+			}
+		}
+	});
+	const daily = calls.find(
+		({ body, endpoint }) =>
+			endpoint === ENDPOINTS.tournamentArchives && body.categoryID === 6
+	);
+	assert.equal(daily.body.extra, true);
+	assert.equal(daily.body.count, 25);
+});
+
+test("keeps exporting when the Series or Daily history list is unavailable", async () => {
+	const post = (endpoint, body) => {
+		if (endpoint === ENDPOINTS.tournamentArchives && body.categoryID === 8) {
+			throw new Error(
+				"result/getTournamentArchives: response is not JSON (HTTP 404)."
+			);
+		}
+		return stubApi().post(endpoint, body);
+	};
+	const result = await exportAllHistory({
+		accountId: "123456",
+		post,
+		templates: {}
+	});
+	assert.equal(result.files.length, 1);
+	assert.deepEqual(result.summary.unavailableFamilies, [
+		{
+			family: "SERIES",
+			reason: "result/getTournamentArchives: response is not JSON (HTTP 404)."
+		}
+	]);
+});
+
+test("says how many history rows were found when nothing can be exported", async () => {
+	const post = (endpoint) => {
+		if (endpoint === ENDPOINTS.bpHistory) {
+			return { data: { listHistoric: [], totalSize: 0 } };
+		}
+		throw new Error(
+			"result/getTournamentArchives: response is not JSON (HTTP 404)."
+		);
+	};
+	await assert.rejects(
+		() => exportAllHistory({ post, templates: {} }),
+		(error) => {
+			assert.match(error.message, /BP Circuit 0, Series 0, Daily 0/);
+			assert.match(error.message, /DAILY history could not be read/);
+			assert.match(
+				error.message,
+				/BP Circuit response shape: \{data:\{listHistoric:\[0\],totalSize:number\}\}/
+			);
+			return true;
+		}
+	);
+});
+
+test("reads BP Circuit history rows keyed by tournamentId", async () => {
+	const calls = [];
+	const post = (endpoint, body) => {
+		calls.push({ endpoint, body });
+		if (endpoint === ENDPOINTS.bpHistory) {
+			return {
+				exception: null,
+				data: {
+					bridgePointsTournaments: [
+						{ id: null, tournamentId: "692db557a0208a3529863465", title: "BP" }
+					],
+					totalSize: 1,
+					offset: 0,
+					nbMax: 45
+				}
+			};
+		}
+		if (endpoint === ENDPOINTS.tournamentArchives) {
+			return { data: { archives: [], totalSize: 0 } };
+		}
+		throw new Error("Results unavailable.");
+	};
+	const result = await exportAllHistory({
+		accountId: "123456",
+		post,
+		templates: {}
+	});
+	assert.equal(result.summary.indexCount, 1);
+	assert.equal(
+		result.summary.skipped[0].sourceTournamentId,
+		"692db557a0208a3529863465"
+	);
+	assert.equal(calls[0].body.nbMax, 50);
+	assert.equal(calls[0].body.count, undefined);
 });

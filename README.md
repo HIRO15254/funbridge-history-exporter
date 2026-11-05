@@ -21,7 +21,7 @@ See [docs/pbn-format.md](docs/pbn-format.md) for the output tags.
 
 1. Log in to Funbridge Web and open the extension while that tab is active.
 2. Click "Detect traffic". Chrome showing that a debugger is attached is expected.
-3. In the same tab, open your history or a tournament result once. The extension detects the allowed API URL and the Authorization header.
+3. In the same tab, open your history or a tournament result once. The extension detects the allowed API URL and the Authorization header. Opening your Daily and Series tournament history pages too lets the extension reuse the exact request Funbridge sends for those lists.
 4. When the status reads "Ready to export", click "Save all history".
 5. When it finishes, click "Disconnect". Closing the tab also detaches the debugger and discards the in-memory credentials.
 
@@ -51,7 +51,7 @@ Only these seven endpoints under `/funbridge-server-ws/rest/` are allowed, and t
 | Purpose | Endpoint |
 | --- | --- |
 | BP Circuit history | `bridgePoints/historic` |
-| Tournament history (Series / Daily / BIC) | `tournament/getTournamentArchives` |
+| Tournament history (Series / Daily / BIC) | `result/getTournamentArchives` |
 | Tournament result | `result/getResultDealForTournament` |
 | Board summary | `result/getDealResultSummary` |
 | Contract distribution | `result/getResultForDeal` |

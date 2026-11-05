@@ -7,7 +7,7 @@ export const ENDPOINTS = Object.freeze({
 	knockoutMatch: "tournament/getKnockoutTournamentMatch",
 	knockoutMatches: "tournament/getKnockoutPlayerMatches",
 	resultTournament: "result/getResultDealForTournament",
-	tournamentArchives: "tournament/getTournamentArchives"
+	tournamentArchives: "result/getTournamentArchives"
 });
 
 const endpointSet = new Set(Object.values(ENDPOINTS));
@@ -44,6 +44,27 @@ export function parseApiUrl(url) {
 			endpoint,
 			root: `${parsed.origin}${parsed.pathname.slice(0, markerIndex + API_MARKER.length - 1)}`
 		};
+	} catch {
+		return undefined;
+	}
+}
+
+// Names only (host and path after the REST marker, plus POST body keys), so a
+// failed export can say which Funbridge APIs the page really used. No values.
+export function describeObservedCall(url, postData) {
+	try {
+		const parsed = new URL(url);
+		const markerIndex = parsed.pathname.indexOf(API_MARKER);
+		if (
+			parsed.protocol !== "https:" ||
+			!parsed.hostname.endsWith(".funbridge.net") ||
+			markerIndex < 0
+		) {
+			return undefined;
+		}
+		const path = parsed.pathname.slice(markerIndex + API_MARKER.length);
+		const keys = Object.keys(parsePostData(postData)).sort();
+		return `${parsed.hostname}/${path}${keys.length ? ` {${keys.join(",")}}` : ""}`;
 	} catch {
 		return undefined;
 	}
@@ -93,7 +114,30 @@ export function runtimeFetchExpression(root, endpoint, authorization, body) {
 		},
 		body: JSON.stringify(body)
 	};
-	return `fetch(${JSON.stringify(url)},${JSON.stringify(options)}).then(async response=>({status:response.status,text:await response.text()}))`;
+	return `fetch(${JSON.stringify(url)},${JSON.stringify(options)}).then(async response=>({status:response.status,contentType:response.headers.get("content-type")??"",redirected:response.redirected,text:await response.text()}))`;
+}
+
+const snippetLength = 160;
+
+function responseSnippet(text) {
+	return String(text ?? "")
+		.replace(/<[^>]*>/g, " ")
+		.replace(/\s+/g, " ")
+		.trim()
+		.slice(0, snippetLength);
+}
+
+function describeNonJson(value) {
+	const parts = [`HTTP ${value.status}`];
+	if (value.contentType) {
+		parts.push(value.contentType.split(";")[0]);
+	}
+	if (value.redirected) {
+		parts.push("redirected");
+	}
+	const snippet = responseSnippet(value.text);
+	parts.push(snippet ? `body: "${snippet}"` : "empty body");
+	return parts.join(", ");
 }
 
 export function unwrapApiResult(result, endpoint) {
@@ -101,13 +145,20 @@ export function unwrapApiResult(result, endpoint) {
 	if (result?.exceptionDetails || !value) {
 		throw new Error(`${endpoint}: in-page fetch failed.`);
 	}
+	const ok = value.status >= 200 && value.status < 300;
+	if (ok && String(value.text ?? "").trim() === "") {
+		// Funbridge answers some empty lists with no body at all.
+		return {};
+	}
 	let json;
 	try {
 		json = JSON.parse(value.text);
 	} catch {
-		throw new Error(`${endpoint}: response is not JSON.`);
+		throw new Error(
+			`${endpoint}: response is not JSON (${describeNonJson(value)}).`
+		);
 	}
-	if (value.status !== 200 || json?.exception) {
+	if (!ok || json?.exception) {
 		const reason =
 			json?.exception?.message ?? json?.message ?? `HTTP ${value.status}`;
 		throw new Error(`${endpoint}: ${reason}`);
@@ -137,6 +188,7 @@ const tournamentId = (row) =>
 	row?.sourceTournamentId ??
 	row?.tournamentID ??
 	row?.tourIDstr ??
+	row?.tournamentId ??
 	row?.id ??
 	row?.ID;
 
@@ -171,12 +223,21 @@ export function archivePage(payload) {
 }
 
 export function resultDealTournament(payload) {
+	// getResultForDeal answers Daily boards with tournament: null, so a row
+	// list on its own is enough; one that also names its tournament wins.
 	let found;
+	let fallback;
 	visitObjects(payload, (value) => {
-		if (!found && Array.isArray(value.listResultDeal) && value.tournament) {
+		if (found || !Array.isArray(value.listResultDeal)) {
+			return;
+		}
+		if (value.tournament) {
 			found = value;
+		} else {
+			fallback ??= value;
 		}
 	});
+	found ??= fallback;
 	if (!found) {
 		throw new Error("Unrecognized tournament result response shape.");
 	}
